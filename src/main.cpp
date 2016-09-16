@@ -12,11 +12,14 @@
 #include <sys/stat.h>
 #include <dirent.h>
 #include <cstring>
+#include <sstream>
 
 #include <thread>
 #include <atomic>
 #include <chrono>
 #include <mutex>
+
+#include "hashlib/hashlibpp.h"
 
 unsigned const N = 32;
 
@@ -270,6 +273,7 @@ private:
                 if (not token.empty()) {
                     // starts at 0
                     ++tokens_[token];
+                    ++totalTokens_;
                 }
                 inSeparator_ = true;
             }
@@ -284,14 +288,30 @@ private:
         inSeparator_ = false;
     }
 
+    /** Gets the tokens string, formatted as they should be in the output file.
+     */
+    std::string tokensString() const {
+        // TODO this may not be the most efficient way to do it
+        std::stringstream ss;
+        for (auto i: tokens_)
+            ss << "," << i.first << "@@::@@" << i.second;
+        return ss.str();
+    }
+
     /** Writes the token counts into the output stream using the sourcerer's notation.
+
+      The format with metadata is:
+
+      `project id`, `file id`, `total tokens in file`, `unique tokens`, `md5 hash`, `@#@` tokens
      */
     void writeCounts(std::ostream & output) const {
+        std::string s(tokensString());
+        // get the md5
+        md5wrapper md5;
+        std::string hash = md5.getHashFromString(s);
         mtx.lock();
-        output << pid_ << "," << fid_ << "@#@";
+        output << pid_ << "," << fid_ << "," << totalTokens_ << "," << tokens_.size() << "," << hash << "@#@" << s << std::endl;
         bookkeeping_file << pid_ << "," << fid_ << "," << filename_ << std::endl;
-        for (auto i: tokens_)
-            output << "," << i.first << "@@::@@" << i.second;
         bytes += bytes_;
         mtx.unlock();
     }
@@ -312,6 +332,8 @@ private:
     SeparatorMatcher matcher_;
 
     long long bytes_ = 0;
+
+    long totalTokens_ = 0;
 
     unsigned pid_;
     unsigned fid_;

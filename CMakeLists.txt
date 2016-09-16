@@ -6,7 +6,10 @@ find_package(Threads)
 add_definitions(-std=c++11 -O2)
 #add_definitions(-std=c++11 -g)
 
-aux_source_directory(. SRC_LIST)
+
+file(GLOB_RECURSE SRC_LIST "src/*.h" "src/*.cpp")
+
+#aux_source_directory(. SRC_LIST)
 
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
