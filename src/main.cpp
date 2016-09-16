@@ -375,6 +375,9 @@ void tokenizeDirectory(DIR * dir, std::string path, unsigned pid, unsigned & fid
         if (d != nullptr) {
             tokenizeDirectory(d, p, pid, fid);
         } else if (endsWith(ent->d_name, ".js")) {
+            // skip min.js files
+            if (endsWith(ent->d_name, ".min.js"))
+                continue;
             std::string filename = path + "/" + ent->d_name;
 
             Tokenizer::tokenize(filename, tokens_file, pid, fid);
