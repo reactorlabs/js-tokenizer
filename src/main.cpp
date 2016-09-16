@@ -21,6 +21,11 @@
 
 #include "hashlib/hashlibpp.h"
 
+#define EXCLUDE_CLONES 1
+#define EXCLUDE_MINJS 1
+
+
+
 unsigned const N = 32;
 
 std::string const PATH_proj_paths = "../projects.txt";
@@ -36,6 +41,28 @@ std::atomic_int counter(N);
 
 // sync mutex for writing the results
 std::mutex mtx;
+
+class CloneInfo {
+public:
+    unsigned pid;
+    unsigned fid;
+    unsigned num;
+
+    CloneInfo() = default;
+
+    CloneInfo(unsigned pid, unsigned fid):
+        pid(pid),
+        fid(fid),
+        num(1) {
+    }
+
+    CloneInfo & operator ++ () {
+        ++num;
+        return *this;
+    }
+};
+
+std::map<std::string, CloneInfo> hashes;
 
 
 /** Little class that matches separators.
@@ -170,6 +197,10 @@ std::atomic_uint total_files(0);
 std::atomic_uint empty_files(0);
 // minjs files (skipped)
 std::atomic_uint minjs_files(0);
+
+// total clones found
+unsigned total_clones = 0;
+
 // project id
 unsigned project_id = 0;
 // last known duration in [s] (for once per second stats)
@@ -196,12 +227,10 @@ public:
         }
         Tokenizer t(input, pid, fid, filename);
         t.tokenize();
-        if (not t.empty()) {
-            t.writeCounts(output);
-            return true;
-        } else {
+        if (not t.empty())
+            return t.writeCounts(output);
+        else
             return false;
-        }
     }
 
 private:
@@ -279,7 +308,7 @@ private:
         unsigned matchedLength = matcher_.matched();
         if (matchedLength > 0) {
             if (not inSeparator_) {
-                std::string token; // (current_.length() - matchedLength);
+                std::string token;
                 for (size_t i = 0, e = current_.length() - matchedLength; i != e; ++i) {
                     unsigned char c = current_[i];
                     if (c < ' ' or c > '~') {
@@ -331,16 +360,33 @@ private:
 
       `project id`, `file id`, `total tokens in file`, `unique tokens`, `md5 hash`, `@#@` tokens
      */
-    void writeCounts(std::ostream & output) const {
+    bool writeCounts(std::ostream & output) const {
+        bool result = true;
         std::string s(tokensString());
         // get the md5
         md5wrapper md5;
         std::string hash = md5.getHashFromString(s);
         mtx.lock();
+        // check the hash for clone
+#if EXCLUDE_CLONES == 1
+        auto i = hashes.find(hash);
+        if (i != hashes.end()) {
+            ++total_clones;
+            ++(i->second);
+            result = false;
+        } else {
+            hashes[hash] = CloneInfo(pid_, fid_);
+            output << pid_ << "," << fid_ << "," << totalTokens_ << "," << tokens_.size() << "," << hash << "@#@" << s << std::endl;
+            bookkeeping_file << pid_ << "," << fid_ << "," << filename_ << std::endl;
+            bytes += bytes_;
+        }
+#else
         output << pid_ << "," << fid_ << "," << totalTokens_ << "," << tokens_.size() << "," << hash << "@#@" << s << std::endl;
         bookkeeping_file << pid_ << "," << fid_ << "," << filename_ << std::endl;
         bytes += bytes_;
+#endif
         mtx.unlock();
+        return result;
     }
 
     bool empty() {
@@ -406,11 +452,13 @@ void tokenizeDirectory(DIR * dir, std::string path, unsigned pid, unsigned & fid
         if (d != nullptr) {
             tokenizeDirectory(d, p, pid, fid);
         } else if (endsWith(ent->d_name, ".js")) {
+#if EXCLUDE_MINJS == 1
             // skip min.js files
             if (endsWith(ent->d_name, ".min.js"))  {
                 ++minjs_files; // atomic
                 continue;
             }
+#endif
             std::string filename = path + "/" + ent->d_name;
 
             if (Tokenizer::tokenize(filename, tokens_file, pid, fid)) {
@@ -530,11 +578,20 @@ int main(int argc, char *argv[]) {
     auto now = std::chrono::high_resolution_clock::now();
     double ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
 
-    std::cout << "Empty or error files: " << empty_files << " (skipped)" << std::endl;
-    std::cout << "Minified files:       " << minjs_files << " (skipped)" << std::endl;
+    double tf = total_clones + empty_files + minjs_files + total_files;
+
+    std::cout << "Total files visited:  " << unsigned(tf) << std::endl;
+    tf = tf / 100;
+    std::cout << "Empty or error files: " << empty_files << " " << empty_files / tf << "% (skipped)"  << std::endl;
+#if EXCLUDE_MINJS == 1
+    std::cout << "Minified files:       " << minjs_files << " " << minjs_files / tf << "% (skipped)"  << std::endl;
+#endif
+#if EXCLUDE_CLONES == 1
+    std::cout << "Exact clones found:   " << total_clones << " " << total_clones / tf << "%" << std::endl;
+#endif
     std::cout << "Total bytes:          " << (bytes / (double) 1024 / 1024) << "[MB]" << std::endl;
     std::cout << "Total time:           " << (ms/1000) << " [s]" << std::endl;
-    std::cout << "Processed " << total_files << " files in " << project_id << " projects, throughput " << (bytes / (ms / 1000) / 1024 / 1024) << "[MB/s]" << std::endl;
+    std::cout << "Processed " << total_files << " (" << total_files / tf << " %) files in " << project_id << " projects, throughput " << (bytes / (ms / 1000) / 1024 / 1024) << "[MB/s]" << std::endl;
 
     return EXIT_SUCCESS;
 }
