@@ -82,6 +82,7 @@ public:
     static void initializeJS() {
         addMatch(" ");
         addMatch("\n");
+        addMatch("\r");
         addMatch("\t");
         addMatch(";");
         addMatch("::");
@@ -165,6 +166,10 @@ std::ofstream bookkeeping_proj;
 
 // total files tokenized
 std::atomic_uint total_files(0);
+// empty or error files (skipped)
+std::atomic_uint empty_files(0);
+// minjs files (skipped)
+std::atomic_uint minjs_files(0);
 // project id
 unsigned project_id = 0;
 // last known duration in [s] (for once per second stats)
@@ -183,15 +188,20 @@ public:
 
     /** Opens the given file and tokenizes it into the current output in the sourcerer format.
      */
-    static void tokenize(std::string const & filename, std::ostream & output, unsigned pid, unsigned fid) {
+    static bool tokenize(std::string const & filename, std::ostream & output, unsigned pid, unsigned fid) {
         std::ifstream input(filename);
         if (not input.good()) {
-            std::cerr << "Unable to open file " << filename << std::endl;
-            return;
+            // std::cerr << "Unable to open file " << filename << std::endl;
+            return false;
         }
         Tokenizer t(input, pid, fid, filename);
         t.tokenize();
-        t.writeCounts(output);
+        if (not t.empty()) {
+            t.writeCounts(output);
+            return true;
+        } else {
+            return false;
+        }
     }
 
 private:
@@ -269,7 +279,24 @@ private:
         unsigned matchedLength = matcher_.matched();
         if (matchedLength > 0) {
             if (not inSeparator_) {
-                std::string token = current_.substr(0, current_.length() - matchedLength);
+                std::string token; // (current_.length() - matchedLength);
+                for (size_t i = 0, e = current_.length() - matchedLength; i != e; ++i) {
+                    unsigned char c = current_[i];
+                    if (c < ' ' or c > '~') {
+                        token += "\\";
+                        token += ('0' + (c / 64));
+                        c = c % 64;
+                        token += '0' + (c / 8);
+                        c = c % 8;
+                        token += '0' + c;
+                    } else if (c == '\\') {
+                        token += "\\\\";
+                    } else if (c == '@') {
+                        token += "\\@";
+                    } else {
+                        token += c;
+                    }
+                }
                 if (not token.empty()) {
                     // starts at 0
                     ++tokens_[token];
@@ -314,6 +341,10 @@ private:
         bookkeeping_file << pid_ << "," << fid_ << "," << filename_ << std::endl;
         bytes += bytes_;
         mtx.unlock();
+    }
+
+    bool empty() {
+        return tokens_.empty();
     }
 
     // counted tokens
@@ -376,15 +407,18 @@ void tokenizeDirectory(DIR * dir, std::string path, unsigned pid, unsigned & fid
             tokenizeDirectory(d, p, pid, fid);
         } else if (endsWith(ent->d_name, ".js")) {
             // skip min.js files
-            if (endsWith(ent->d_name, ".min.js"))
+            if (endsWith(ent->d_name, ".min.js"))  {
+                ++minjs_files; // atomic
                 continue;
+            }
             std::string filename = path + "/" + ent->d_name;
 
-            Tokenizer::tokenize(filename, tokens_file, pid, fid);
-            tokens_file << std::endl;
-
-            ++fid; // local
-            ++total_files; // atomic
+            if (Tokenizer::tokenize(filename, tokens_file, pid, fid)) {
+                ++fid; // local
+                ++total_files; // atomic
+            } else {
+                ++empty_files;
+            }
         }
     }
     closedir(dir);
@@ -496,8 +530,10 @@ int main(int argc, char *argv[]) {
     auto now = std::chrono::high_resolution_clock::now();
     double ms = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count();
 
-    std::cout << "Total bytes: " << (bytes / (double) 1024 / 1024) << "[MB]" << std::endl;
-    std::cout << "Total time:  " << (ms/1000) << " [s]" << std::endl;
+    std::cout << "Empty or error files: " << empty_files << " (skipped)" << std::endl;
+    std::cout << "Minified files:       " << minjs_files << " (skipped)" << std::endl;
+    std::cout << "Total bytes:          " << (bytes / (double) 1024 / 1024) << "[MB]" << std::endl;
+    std::cout << "Total time:           " << (ms/1000) << " [s]" << std::endl;
     std::cout << "Processed " << total_files << " files in " << project_id << " projects, throughput " << (bytes / (ms / 1000) / 1024 / 1024) << "[MB/s]" << std::endl;
 
     return EXIT_SUCCESS;
