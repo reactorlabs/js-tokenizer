@@ -7,7 +7,7 @@ add_definitions(-std=c++11 -O2)
 #add_definitions(-std=c++11 -g)
 
 
-file(GLOB_RECURSE SRC_LIST "src/*.h" "src/*.cpp")
+file(GLOB_RECURSE SRC_LIST "src/*.h" "src/*.cpp" "../notes.mkd" "../data/datasets.mkd" "../SourcererCC/clone-detector/sourcerer-cc.properties")
 
 #aux_source_directory(. SRC_LIST)
 

@@ -21,20 +21,14 @@
 
 #include "hashlib/hashlibpp.h"
 
-#define EXCLUDE_CLONES 1
+#define EXCLUDE_CLONES 0
 #define EXCLUDE_MINJS 1
 
 
 
 unsigned const N = 32;
 
-std::string const PATH_proj_paths = "../projects.txt";
-std::string const PATH_tokens_folder = "tokens";
-std::string const PATH_bookkeeping_file_folder = "bookkeeping_files";
-std::string const PATH_bookkeeping_proj_folder = "bookkeeping_projs";
-std::string const PATH_projects_success = "projects_success.txt";
-std::string const PATH_projects_starting_index = "project_startingt_index.txt";
-std::string const PATH_projects_fail = "prohjects_fail.txt";
+std::string const PATH_output_folder = "/home/peta/sourcerer/processed/jakub2";
 
 // number of threads
 std::atomic_int counter(N);
@@ -198,6 +192,9 @@ std::atomic_uint empty_files(0);
 // minjs files (skipped)
 std::atomic_uint minjs_files(0);
 
+// file id, shared across all threads
+std::atomic_uint file_id(0);
+
 // total clones found
 unsigned total_clones = 0;
 
@@ -219,13 +216,13 @@ public:
 
     /** Opens the given file and tokenizes it into the current output in the sourcerer format.
      */
-    static bool tokenize(std::string const & filename, std::ostream & output, unsigned pid, unsigned fid) {
+    static bool tokenize(std::string const & filename, std::ostream & output, unsigned pid) {
         std::ifstream input(filename);
         if (not input.good()) {
             // std::cerr << "Unable to open file " << filename << std::endl;
             return false;
         }
-        Tokenizer t(input, pid, fid, filename);
+        Tokenizer t(input, pid, filename);
         t.tokenize();
         if (not t.empty())
             return t.writeCounts(output);
@@ -243,10 +240,9 @@ private:
         MultiCommentMayEnd,
     };
 
-    Tokenizer(std::istream & file, unsigned pid, unsigned fid, std::string const & filename):
+    Tokenizer(std::istream & file, unsigned pid, std::string const & filename):
         f_(file),
         pid_(pid),
-        fid_(fid),
         filename_(filename) {
     }
 
@@ -375,14 +371,16 @@ private:
             ++(i->second);
             result = false;
         } else {
-            hashes[hash] = CloneInfo(pid_, fid_);
-            output << pid_ << "," << fid_ << "," << totalTokens_ << "," << tokens_.size() << "," << hash << "@#@" << s << std::endl;
-            bookkeeping_file << pid_ << "," << fid_ << "," << filename_ << std::endl;
+            unsigned fid = file_id++;
+            hashes[hash] = CloneInfo(pid_, fid);
+            output << pid_ << "," << fid << "," << totalTokens_ << "," << tokens_.size() << "," << hash << "@#@" << s << std::endl;
+            bookkeeping_file << pid_ << "," << fid << "," << filename_ << std::endl;
             bytes += bytes_;
         }
 #else
-        output << pid_ << "," << fid_ << "," << totalTokens_ << "," << tokens_.size() << "," << hash << "@#@" << s << std::endl;
-        bookkeeping_file << pid_ << "," << fid_ << "," << filename_ << std::endl;
+        unsigned fid = file_id++;
+        output << pid_ << "," << fid << "," << totalTokens_ << "," << tokens_.size() << "," << hash << "@#@" << s << std::endl;
+        bookkeeping_file << pid_ << "," << fid << "," << filename_ << std::endl;
         bytes += bytes_;
 #endif
         mtx.unlock();
@@ -413,7 +411,6 @@ private:
     long totalTokens_ = 0;
 
     unsigned pid_;
-    unsigned fid_;
     std::string const & filename_;
 };
 
@@ -442,7 +439,7 @@ bool endsWith(std::string const & str, std::string const & suffix) {
 
 /** Tokenizes all javascript files in the directory. Recursively searches in subdirectories.
  */
-void tokenizeDirectory(DIR * dir, std::string path, unsigned pid, unsigned & fid) {
+void tokenizeDirectory(DIR * dir, std::string path, unsigned pid) {
     struct dirent * ent;
     while ((ent = readdir(dir)) != nullptr) {
         if (strcmp(ent->d_name, ".") == 0 or strcmp(ent->d_name, "..") == 0)
@@ -450,7 +447,7 @@ void tokenizeDirectory(DIR * dir, std::string path, unsigned pid, unsigned & fid
         std::string p = path + "/" + ent->d_name;
         DIR * d = opendir(p.c_str());
         if (d != nullptr) {
-            tokenizeDirectory(d, p, pid, fid);
+            tokenizeDirectory(d, p, pid);
         } else if (endsWith(ent->d_name, ".js")) {
 #if EXCLUDE_MINJS == 1
             // skip min.js files
@@ -461,8 +458,7 @@ void tokenizeDirectory(DIR * dir, std::string path, unsigned pid, unsigned & fid
 #endif
             std::string filename = path + "/" + ent->d_name;
 
-            if (Tokenizer::tokenize(filename, tokens_file, pid, fid)) {
-                ++fid; // local
+            if (Tokenizer::tokenize(filename, tokens_file, pid)) {
                 ++total_files; // atomic
             } else {
                 ++empty_files;
@@ -477,17 +473,19 @@ void tokenizeDirectory(DIR * dir, std::string path, unsigned pid, unsigned & fid
   Finally updates the project bookkeeping file with project id and location.
  */
 void tokenizeProject(DIR * dir, std::string path, unsigned pid) {
-    unsigned fid = 0;
-    tokenizeDirectory(dir, path, pid, fid = 0);
+    tokenizeDirectory(dir, path, pid);
 }
 
 /** Initializes output directories if not yet created.
  */
 void initializeDirectories() {
     /** Initialize directories if they do not exist */
-    mkdir(PATH_tokens_folder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir(PATH_bookkeeping_file_folder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    mkdir(PATH_bookkeeping_proj_folder.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::string s = PATH_output_folder + "/tokens";
+    mkdir(s.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    s = PATH_output_folder + "/bookkeeping_file";
+    mkdir(s.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    s = PATH_output_folder + "/bookkeeping_proj";
+    mkdir(s.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
 }
 
 /** Opens the tokens and bookkeeping streams with unique id attached.
@@ -497,22 +495,27 @@ void openUniqueStreams() {
     while (true) {
         ++result;
         std::string num = std::to_string(result);
-        std::ifstream f(PATH_tokens_folder + "/tokens_" + num + ".txt");
+        std::ifstream f(PATH_output_folder + "/tokens/tokens_" + num + ".txt");
         if (f.good())
             continue;
-        f.open(PATH_bookkeeping_file_folder + "/bookkeeping_file_" + num + ".txt");
+        f.open(PATH_output_folder + "/bookkeeping_file/bookkeeping_file_" + num + ".txt");
         if (f.good())
             continue;
-        f.open(PATH_bookkeeping_file_folder + "/bookkeeping_proj_" + num + ".txt");
+        f.open(PATH_output_folder + "/bookkeeping_proj/bookkeeping_proj_" + num + ".txt");
         if (f.good())
             continue;
         break;
     }
     std::string num = std::to_string(result);
     std::cout << "This run ID is: " << num << std::endl;
-    tokens_file.open(PATH_tokens_folder + "/tokens_" + num + ".txt");
-    bookkeeping_file.open(PATH_bookkeeping_file_folder + "/bookkeeping_file_" + num + ".txt");
-    bookkeeping_proj.open(PATH_bookkeeping_proj_folder + "/bookkeeping_proj_" + num + ".txt");
+    tokens_file.open(PATH_output_folder + "/tokens/tokens_" + num + ".txt");
+    bookkeeping_file.open(PATH_output_folder + "/bookkeeping_file/bookkeeping_file_" + num + ".txt");
+    bookkeeping_proj.open(PATH_output_folder + "/bookkeeping_proj/bookkeeping_proj_" + num + ".txt");
+    if (not tokens_file.good() or not bookkeeping_file.good() or not bookkeeping_proj.good()) {
+        std::cerr << "Cannot open output files" << std::endl;
+        exit(-1);
+    }
+
 }
 
 int main(int argc, char *argv[]) {
