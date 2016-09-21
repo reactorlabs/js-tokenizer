@@ -90,9 +90,10 @@ private:
     }
 
     void tokenizeFile(std::string const & path) {
-        FileTokenizer t(record_, path);
+        FileRecord r(record_, path);
+        FileTokenizer t(r);
         if (t.tokenize()) {
-            if (t.record().uniqueTokens == 0)
+            if (t.record().uniqueTokens() == 0)
                 ++empty_files;
             m.lock();
             unsigned fileMatch = exactFileMatches[t.record().fileHash]++;
@@ -103,17 +104,17 @@ private:
             if (tokensMatch > 1)
                 ++exact_tokens;
             // output sourcererCC data
-            sourcererCCOutput(t, fileMatch == 0, tokensMatch == 0);
+            sourcererCCOutput(r, fileMatch == 0, tokensMatch == 0);
             // output our data
-            t.record().writeFileRecord(output_.ourdata);
+            r.writeFileRecord(output_.ourdata);
         } else {
             ++error_files;
         }
     }
 
-    void sourcererCCOutput(FileTokenizer & t, bool uniqueFile, bool uniqueTokens) {
+    void sourcererCCOutput(FileRecord & t, bool uniqueFile, bool uniqueTokens) {
 #if SOURCERERCC_IGNORE_EMPTY_FILES == 1
-        if (t.record().uniqueTokens == 0)
+        if (t.uniqueTokens() == 0)
             return;
 #endif
 #if SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS == 1
@@ -125,7 +126,7 @@ private:
             return;
 #endif
         t.writeSourcererFileTokens(output_.tokens);
-        t.record().writeSourcererFileStats(output_.stats);
+        t.writeSourcererFileStats(output_.stats);
     }
 
 

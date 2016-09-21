@@ -25,9 +25,9 @@ private:
     friend std::ostream & operator << (std::ostream & s, escape const & str) {
         for (size_t i = 0, e = str.s.size(); i != e; ++i) {
             unsigned char c = str.s[i];
-            if ((c < 32) or (c > 126)) {
+            if ((c < ' ') or (c > '~')) {
                 s << '\\';
-                char x = c / 16;
+                unsigned char x = c / 16;
                 s << (x > 9) ? 'a' + (x - 10) : '0' + x;
                 x = c % 16;
                 s << (x > 9) ? 'a' + (x - 10) : '0' + x;

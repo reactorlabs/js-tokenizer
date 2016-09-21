@@ -71,7 +71,9 @@ public:
     // total number of tokens in the file
     unsigned totalTokens = 0;
     // number of unique tokens in the file
-    unsigned uniqueTokens = 0;
+    unsigned uniqueTokens() {
+        return tokens_.size();
+    }
 
 
     std::string fileHash;
@@ -107,13 +109,35 @@ public:
           << tokenBytes << ","
           << (bytes - commentBytes - whitespaceBytes - tokenBytes) << "," // separator bytes
           << loc << ","
-          << emptyLoc << ","
           << commentLoc << ","
+          << emptyLoc << ","
           << totalTokens << ","
-          << uniqueTokens << ","
+          << uniqueTokens() << ","
           << fileHash << ","
           << tokensHash << std::endl;
     }
+
+    /** Outputs the tokens file for sourcererCC.
+     */
+    void writeSourcererFileTokens(std::ostream & f) {
+        // if the file is empty, do not output it as it causes problems for sourcerer
+        if (tokens_.size() == 0)
+            return;
+        f << project.pid << ","
+          << fid << ","
+          << totalTokens << ","
+          << uniqueTokens() << ","
+          << tokensHash << "@#@";
+        auto i = tokens_.begin(), e = tokens_.end();
+        f << escape(i->first) << "@@::@@" << i->second;
+        ++i;
+        while (i != e) {
+            f << "," << escape(i->first) << "@@::@@" << i->second;
+            ++i;
+        }
+        f << std::endl;
+    }
+
 
 
     FileRecord(ProjectRecord & project, std::string const & path):
@@ -130,6 +154,10 @@ public:
 
 
 private:
+
+    friend class FileTokenizer;
+
+    std::map<std::string, unsigned> tokens_;
 
 };
 

@@ -15,8 +15,8 @@
 class FileTokenizer {
 public:
 
-    FileTokenizer(ProjectRecord & project, std::string const & relPath):
-        record_(project, relPath) {
+    FileTokenizer(FileRecord & r):
+        record_(r) {
     }
 
     FileRecord & record() {
@@ -34,29 +34,7 @@ public:
        doTokenize();
        record_.fileHash = fileHash_.getHash();
        record_.tokensHash = calculateTokensHash();
-       record_.uniqueTokens = tokens_.size();
        return true;
-   }
-
-   /** Outputs the tokens file for sourcererCC.
-    */
-   void writeSourcererFileTokens(std::ostream & f) {
-       // if the file is empty, do not output it as it causes problems for sourcerer
-       if (tokens_.size() == 0)
-           return;
-       f << record_.project.pid << ","
-         << record_.fid << ","
-         << record_.totalTokens << ","
-         << record_.uniqueTokens << ","
-         << record_.tokensHash << "@#@";
-       auto i = tokens_.begin(), e = tokens_.end();
-       f << escape(i->first) << "@@::@@" << i->second;
-       ++i;
-       while (i != e) {
-           f << "," << escape(i->first) << "@@::@@" << i->second;
-           ++i;
-       }
-       f << std::endl;
    }
 
    static void initializeLanguage();
@@ -176,7 +154,7 @@ private:
     std::string calculateTokensHash() {
         // calculate hash of the tokens
         MD5 md5;
-        for (auto i : tokens_) {
+        for (auto i : record_.tokens_) {
             md5.add(i.first.c_str(), i.first.size());
             md5.add(& i.second, sizeof(i.second));
         }
@@ -269,7 +247,7 @@ private:
         } else {
             record_.tokenBytes += token.size();
             ++record_.totalTokens;
-            tokens_[token] += 1;
+            record_.tokens_[token] += 1;
             commentLine_ = false;
         }
     }
@@ -280,9 +258,7 @@ private:
 
     MD5 fileHash_;
 
-    FileRecord record_;
-
-    std::map<std::string, unsigned> tokens_;
+    FileRecord & record_;
 
     /** Initial state of the matching FSM.
      */
