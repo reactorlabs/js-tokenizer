@@ -25,16 +25,41 @@ private:
     friend std::ostream & operator << (std::ostream & s, escape const & str) {
         for (size_t i = 0, e = str.s.size(); i != e; ++i) {
             unsigned char c = str.s[i];
-            if ((c < ' ') or (c > '~')) {
+            if ((c < ' ') or (c > '~') or c == '#' or c == '@' or c == ',' or c == ':' or c == '\\') {
                 s << '\\';
                 unsigned char x = c / 16;
                 s << (x > 9) ? 'a' + (x - 10) : '0' + x;
                 x = c % 16;
                 s << (x > 9) ? 'a' + (x - 10) : '0' + x;
-            } else if (c == '\\') {
-                s << "\\\\";
-            } else if (c == '@') {
-                s << "\\@";
+            } else {
+                s << c;
+            }
+        }
+        return s;
+    }
+
+    std::string const & s;
+};
+
+/** Outputs the string escaping commas in paths.
+ */
+class escapePath {
+public:
+    escapePath(std::string const & s):
+        s(s) {
+    }
+
+private:
+
+    friend std::ostream & operator << (std::ostream & s, escapePath const & str) {
+        for (size_t i = 0, e = str.s.size(); i != e; ++i) {
+            unsigned char c = str.s[i];
+            if (c == ',' or c == ' ' or c == '#' or c == '@' or c == '%') {
+                s << '%';
+                unsigned char x = c / 16;
+                s << (x > 9) ? 'a' + (x - 10) : '0' + x;
+                x = c % 16;
+                s << (x > 9) ? 'a' + (x - 10) : '0' + x;
             } else {
                 s << c;
             }

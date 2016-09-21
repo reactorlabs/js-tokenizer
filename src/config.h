@@ -4,9 +4,9 @@
 
 
 
-#define NUM_THREADS 8
+#define NUM_THREADS 1
 
-#define PATH_OUTPUT "/home/peta/sourcerer/processedX"
+#define PATH_OUTPUT "/home/peta/sourcerer/processed"
 
 #define PATH_INPUT "/home/peta/sourcerer/data/jakub2"
 

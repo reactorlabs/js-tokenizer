@@ -27,8 +27,8 @@ public:
      */
     void writeSourcererBookkeeping(std::ostream & f) {
         f << pid << ","
-          << path << ","
-          << url << std::endl;
+          << escapePath(path) << ","
+          << escapePath(url) << std::endl;
     }
 
     static unsigned projectID(bool increment = true) {
@@ -85,8 +85,8 @@ public:
     void writeSourcererFileStats(std::ostream & f) {
         f << project.pid << ","
           << fid << ","
-          << project.path << "/" << path << ","
-          << project.url << "/blob/master/" << path << ","
+          << escapePath(STR(project.path << "/" << path)) << ","
+          << escapePath(STR(project.url << "/blob/master/" << path)) << ","
           << fileHash << ","
           << bytes << ","
           << loc << "," // size in lines
@@ -102,7 +102,8 @@ public:
     void writeFileRecord(std::ostream & f) {
         f << project.pid << ","
           << fid << ","
-          << path << ","
+          << escapePath(project.path) << ","
+          << escapePath(path) << ","
           << bytes << ","
           << commentBytes << ","
           << whitespaceBytes << ","

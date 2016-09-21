@@ -58,11 +58,11 @@ private:
         if (url.substr(url.size() - 4) != ".git")
             return "not_git_repo";
         if (url.substr(0, 15) == "git@github.com:") {
-            url = url.substr(15, url.size() - 4);
+            url = url.substr(15, url.size() - 19);
         } else if (url.substr(0, 17) == "git://github.com/") {
-            url = url.substr(17, url.size() - 4);
+            url = url.substr(17, url.size() - 21);
         } else if (url.substr(0, 19) == "https://github.com/") {
-            url = url.substr(19, url.size() - 4);
+            url = url.substr(19, url.size() - 23);
         } else {
             return "not_git_repo";
         }
