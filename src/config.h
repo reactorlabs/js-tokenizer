@@ -6,10 +6,11 @@
 
 #define NUM_THREADS 1
 
-#define PATH_OUTPUT "/home/peta/sourcerer/processedLAST"
+#define PATH_OUTPUT "/mnt/data2/processed"
 
 #define PATH_INPUT(ENTRY) \
-    ENTRY("/home/peta/sourcerer/data")
+    ENTRY("/mnt/data1/data70k") \
+    ENTRY("/mnt/data2/data70k2")
 
 
 #define PATH_STATS_FILE "files_stats"
