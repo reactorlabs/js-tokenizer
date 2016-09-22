@@ -68,6 +68,8 @@ std::string Driver::convertGitUrlToHTML(std::string url) {
         url = url.substr(17, url.size() - 21);
     } else if (url.substr(0, 19) == "https://github.com/") {
         url = url.substr(19, url.size() - 23);
+    } else if (url.substr(0, 34) == "https://jakubzitny:asd@github.com/") {
+        url = url.substr(34, url.size() - 38);
     } else {
         return "";
     }
@@ -75,6 +77,7 @@ std::string Driver::convertGitUrlToHTML(std::string url) {
 }
 
 void Driver::crawlDirectory(DIR * dir, std::string const & path) {
+    // std::cout << "crawling directory " << path << std::endl;
     // first see if the directory itself is a github repo
     std::string url = gitUrl(path);
     if (not url.empty()) {

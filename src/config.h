@@ -4,7 +4,7 @@
 
 
 
-#define NUM_THREADS 1
+#define NUM_THREADS 64
 
 #define PATH_OUTPUT "/mnt/data2/processed"
 
