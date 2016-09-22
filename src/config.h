@@ -4,11 +4,12 @@
 
 
 
-#define NUM_THREADS 1
+#define NUM_THREADS 8
 
-#define PATH_OUTPUT "/home/peta/sourcerer/processed"
+#define PATH_OUTPUT "/home/peta/sourcerer/processedLAST"
 
-#define PATH_INPUT "/home/peta/sourcerer/data/jakub2"
+#define PATH_INPUT(ENTRY) \
+    ENTRY("/home/peta/sourcerer/data/jakub2")
 
 
 #define PATH_STATS_FILE "files_stats"

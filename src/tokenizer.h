@@ -126,15 +126,6 @@ private:
         } else if (result == '\n' and file_.peek() == '\r') {
             file_.get();
         }
-        if (result == '\n') {
-            ++record_.loc;
-            if (emptyLine_)
-                ++record_.emptyLoc;
-            else if (commentLine_ and inComment())
-                ++record_.commentLoc;
-            emptyLine_ = true;
-            commentLine_ = true;
-        }
         if (not file_.eof()) {
             // increase total bytes (ignore different line endings
             // TODO do we want to keep / track this information ?
@@ -197,6 +188,7 @@ private:
                 lastMatch = state;
                 lastMatchPos = temp.size();
             }
+
         }
         if (lastMatch != nullptr)
             addTokens(lastMatch, lastMatchPos, temp);
@@ -211,11 +203,21 @@ private:
         if (x > 0) {
             addToken(temp.substr(0, x));
         }
+        // deal with new lines
+        if (temp[x] == '\n') {
+            if (commentLine_ and inComment())
+                ++record_.commentLoc;
+            else if (emptyLine_)
+                ++record_.emptyLoc;
+            ++record_.loc;
+            emptyLine_ = true;
+            commentLine_ = true;
+        }
         // add the matched stuff and deal with it appropriately
         if (inComment()) {
+            record_.commentBytes += match->length;
             if (match->kind == commentEnd_) {
                 commentEnd_ = CommentKind::none;
-                record_.commentBytes += match->length;
             }
         // if we are not in a comment, we may start a new one
         } else {

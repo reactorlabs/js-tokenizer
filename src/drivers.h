@@ -14,8 +14,10 @@ public:
 
     Driver(int argc, char * argv[]) {
         // this is here if we want to use commandline api in the future
-        root_ = PATH_INPUT;
         output_ = PATH_OUTPUT;
+
+#define GENERATE_ROOT_ENTRY(PATH) root_.push_back(PATH);
+PATH_INPUT(GENERATE_ROOT_ENTRY)
 
 
 
@@ -31,47 +33,48 @@ public:
         // create output files
         for (size_t i = 0; i < NUM_THREADS; ++i)
             outputFiles[i] = new OutputFiles(output_, i);
-
-
         std::atomic_uint available_threads(NUM_THREADS);
+        std::cout << "Starting " << NUM_THREADS << " worker threads" << std::endl;
         struct dirent * ent;
-        DIR * root = opendir(root_.c_str());
-        if (root == nullptr)
-            throw STR("Unable to open projects root " << root_);
-        std::cout << "Starting " << NUM_THREADS << " worker threads, projects root " << root_ << std::endl;
-        while ((ent = readdir(root)) != nullptr) {
-            if (strcmp(ent->d_name, ".") == 0 or strcmp(ent->d_name, "..") == 0)
-                continue;
-            std::string p = root_ + "/" + ent->d_name + "/latest";
-            DIR * d = opendir(p.c_str());
-            // it is a directory, wait for avaiable thread and schedule project crawler
-            if (d != nullptr) {
-                closedir(d);
-                // busy wait until a thread becomes available
-                while (available_threads == 0)
-                    busyWait();
-                // fire new thread
-                --available_threads;
-                // acquire output files in a lock
-                outputFilesMutex.lock();
-                OutputFiles * of = outputFiles.back();
-                outputFiles.pop_back();
-                outputFilesMutex.unlock();
-                // run the thread
-                std::thread t([& available_threads, & outputFiles, & outputFilesMutex, d, p, of]() {
-                    ProjectCrawler crawler(p, *of);
-                    crawler.crawl();
-                    // return output threads
+        for (std::string const & rootPath : root_) {
+            DIR * root = opendir(rootPath.c_str());
+            if (root == nullptr)
+                throw STR("Unable to open projects root " << rootPath);
+            std::cout << "Analyzing projects root " << rootPath << std::endl;
+            while ((ent = readdir(root)) != nullptr) {
+                if (strcmp(ent->d_name, ".") == 0 or strcmp(ent->d_name, "..") == 0)
+                    continue;
+                std::string p = rootPath + "/" + ent->d_name + "/latest";
+                DIR * d = opendir(p.c_str());
+                // it is a directory, wait for avaiable thread and schedule project crawler
+                if (d != nullptr) {
+                    closedir(d);
+                    // busy wait until a thread becomes available
+                    while (available_threads == 0)
+                        busyWait();
+                    // fire new thread
+                    --available_threads;
+                    // acquire output files in a lock
                     outputFilesMutex.lock();
-                    outputFiles.push_back(of);
+                    OutputFiles * of = outputFiles.back();
+                    outputFiles.pop_back();
                     outputFilesMutex.unlock();
-                    // free thread's resources
-                    ++available_threads;
-                });
-                t.detach();
+                    // run the thread
+                    std::thread t([& available_threads, & outputFiles, & outputFilesMutex, d, p, of]() {
+                        ProjectCrawler crawler(p, *of);
+                        crawler.crawl();
+                        // return output threads
+                        outputFilesMutex.lock();
+                        outputFiles.push_back(of);
+                        outputFilesMutex.unlock();
+                        // free thread's resources
+                        ++available_threads;
+                    });
+                    t.detach();
+                }
             }
+            closedir(root);
         }
-        closedir(root);
         while (available_threads < NUM_THREADS)
             busyWait();
         for (auto i : outputFiles)
@@ -83,6 +86,7 @@ public:
     }
 
 private:
+
 
     void busyWait(bool final = false) {
         static unsigned lastDuration = 0;
@@ -139,7 +143,7 @@ private:
     }
 
 
-    std::string root_;
+    std::vector<std::string> root_;
     std::string output_;
 
     std::chrono::high_resolution_clock::time_point start_;
