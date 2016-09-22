@@ -26,66 +26,21 @@ PATH_INPUT(GENERATE_ROOT_ENTRY)
     }
 
 
-    void run() {
-        start_ = std::chrono::high_resolution_clock::now();
-        std::mutex outputFilesMutex;
-        std::vector<OutputFiles *> outputFiles(NUM_THREADS);
-        // create output files
-        for (size_t i = 0; i < NUM_THREADS; ++i)
-            outputFiles[i] = new OutputFiles(output_, i);
-        std::atomic_uint available_threads(NUM_THREADS);
-        std::cout << "Starting " << NUM_THREADS << " worker threads" << std::endl;
-        struct dirent * ent;
-        for (std::string const & rootPath : root_) {
-            DIR * root = opendir(rootPath.c_str());
-            if (root == nullptr)
-                throw STR("Unable to open projects root " << rootPath);
-            std::cout << "Analyzing projects root " << rootPath << std::endl;
-            while ((ent = readdir(root)) != nullptr) {
-                if (strcmp(ent->d_name, ".") == 0 or strcmp(ent->d_name, "..") == 0)
-                    continue;
-                std::string p = rootPath + "/" + ent->d_name + "/latest";
-                DIR * d = opendir(p.c_str());
-                // it is a directory, wait for avaiable thread and schedule project crawler
-                if (d != nullptr) {
-                    closedir(d);
-                    // busy wait until a thread becomes available
-                    while (available_threads == 0)
-                        busyWait();
-                    // fire new thread
-                    --available_threads;
-                    // acquire output files in a lock
-                    outputFilesMutex.lock();
-                    OutputFiles * of = outputFiles.back();
-                    outputFiles.pop_back();
-                    outputFilesMutex.unlock();
-                    // run the thread
-                    std::thread t([& available_threads, & outputFiles, & outputFilesMutex, d, p, of]() {
-                        ProjectCrawler crawler(p, *of);
-                        crawler.crawl();
-                        // return output threads
-                        outputFilesMutex.lock();
-                        outputFiles.push_back(of);
-                        outputFilesMutex.unlock();
-                        // free thread's resources
-                        ++available_threads;
-                    });
-                    t.detach();
-                }
-            }
-            closedir(root);
-        }
-        while (available_threads < NUM_THREADS)
-            busyWait();
-        for (auto i : outputFiles)
-            delete i;
-        busyWait(true);
-    }
+    void run();
 
     ~Driver() {
     }
 
 private:
+
+    std::string gitUrl(std::string const & path);
+
+    std::string convertGitUrlToHTML(std::string url);
+
+    void crawlDirectory(DIR * d, std::string const & path);
+
+    void crawlProject(std::string const & path, std::string const & url);
+
 
 
     void busyWait(bool final = false) {

@@ -18,9 +18,10 @@ public:
     std::string url;
 
 
-    ProjectRecord(std::string const & path):
+    ProjectRecord(std::string const & path, std::string const & url):
         pid(projectID()),
-        path(path) {
+        path(path),
+        url(url) {
     }
 
     /** Writes sourcererCC's bookkeeping information into given output stream.
