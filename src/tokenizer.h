@@ -32,7 +32,7 @@ private:
 
     enum class Kind {
 #define GENERATE_COMMENT_KIND(START, END, NAME) NAME ## _start, NAME ## _end,
-#define GENERATE_LITERAL_KIND(START, END, ESCAPE, NAME) NAME ##_start, NAME ## _end, NAME ## _escape,
+#define GENERATE_LITERAL_KIND(START, ESCAPE, NAME) NAME ##_start, NAME ## _escape,
         COMMENTS(GENERATE_COMMENT_KIND)
         LITERALS(GENERATE_LITERAL_KIND)
         none,
@@ -47,16 +47,28 @@ private:
 
     static bool isLiteralKind(Kind k) {
         // no need to deal with ends
-#define IS_LITERAL(START, END, ESCAPE, NAME) if (k == Kind::NAME ##_start) return true;
+#define IS_LITERAL(START, ESCAPE, NAME) if (k == Kind::NAME ##_start) return true;
         LITERALS(IS_LITERAL)
         return false;
     }
 
-    /** Returns the corresponding end comment kind. */
+    /** Returns the corresponding end kind for comments or literals. */
     static Kind kindEndFor(Kind k) {
 #define GENERATE_COMMENT_END_FOR(START, END, NAME) if (k == Kind::NAME ## _start) return Kind::NAME ## _end;
+#define GENERATE_LITERAL_END_FOR(START, ESCAPE, NAME) if (k == Kind::NAME ## _start) return Kind::NAME ## _start;
         COMMENTS(GENERATE_COMMENT_END_FOR)
+        LITERALS(GENERATE_LITERAL_END_FOR)
         return Kind::none;
+    }
+
+    /** Returns token that serves as an escape character for given literal kind, or the token itself so that comparison against Kind::none can be done.
+
+      This is ok because literal token can never be its own escape.
+     */
+    static Kind escapeFor(Kind k) {
+#define GENERATE_LITERAL_ESCAPE_FOR(START, ESCAPE, NAME) if (k == Kind::NAME ## _start) return Kind::NAME ## _escape;
+        LITERALS(GENERATE_LITERAL_ESCAPE_FOR)
+        return k;
     }
 
     class MatchStep;
@@ -79,12 +91,10 @@ private:
     /** Returns true if tokenize is inside a literal
      */
     bool inLiteral() const {
-#define GENERATE_LITERAL_END_CHECK(START, END, ESCAPE, NAME) if (commentEnd_ == Kind::NAME ## _end) return true;
+#define GENERATE_LITERAL_END_CHECK(START, ESCAPE, NAME) if (commentEnd_ == Kind::NAME ## _start) return true;
         LITERALS(GENERATE_LITERAL_END_CHECK)
         return false;
     }
-
-
 
     /** Reads new character from the file. Converts line endings to `\n` where required.
      */
@@ -127,4 +137,6 @@ private:
     /** True if the line contains only comments.
      */
     bool commentLine_;
+
+    bool escaped_;
 };

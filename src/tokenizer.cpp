@@ -67,18 +67,24 @@ void Tokenizer::initializeLanguage() {
     unsigned w = 0;
     unsigned c = 0;
     unsigned s = 0;
+    unsigned l = 0;
 #define GENERATE_WHITESPACE_MATCH(X) start.addMatch(X, Kind::none, false, true); ++w;
 #define GENERATE_COMMENTS_MATCH(START, END, NAME) start.addMatch(START, Kind::NAME ## _start, false, false); \
     start.addMatch(END, Kind::NAME ## _end, false, false); ++c;
+#define GENERATE_LITERALS_MATCH(START, ESCAPE, NAME) start.addMatch(START, Kind::NAME ## _start, false, false); \
+    start.addMatch(ESCAPE, Kind::NAME ## _escape, false, false); ++l;
+
 #define GENERATE_SEPARATORS_MATCH(X) start.addMatch(X, Kind::none, true, false); ++s;
     WHITESPACE(GENERATE_WHITESPACE_MATCH)
     COMMENTS(GENERATE_COMMENTS_MATCH)
+    LITERALS(GENERATE_LITERALS_MATCH)
     SEPARATORS(GENERATE_SEPARATORS_MATCH)
 
     Worker::print(STR("Initialization for language " << LANGUAGE << " done."));
     Worker::print(STR("    " << w << " whitespace matches"));
     Worker::print(STR("    " << c << " comment types"));
     Worker::print(STR("    " << s << " separators"));
+    Worker::print(STR("    " << l << " literals"));
 }
 
 char Tokenizer::get() {
@@ -88,14 +94,11 @@ char Tokenizer::get() {
     } else if (result == '\n' and file_.peek() == '\r') {
         file_.get();
     }
-    if (not file_.eof()) {
-        // increase total bytes (ignore different line endings
-        // TODO do we want to keep / track this information ?
-        ++f_.bytes_;
-        // add the byte to the file hash
-        // TODO this ignores extra bytes in new lines, is this acceptable?
-        fileHash_.add(&result, 1);
-    }
+    // increase total bytes (ignore different line endings
+    ++f_.bytes_;
+    // add the byte to the file hash
+    // TODO this ignores extra bytes in new lines, is this acceptable?
+    fileHash_.add(&result, 1);
     return result;
 }
 
@@ -103,6 +106,7 @@ void Tokenizer::tokenize() {
     commentEnd_ = Kind::none;
     emptyLine_ = true;
     commentLine_ = true;
+    escaped_ = false;
     std::string temp;
     MatchStep * state = initialState_;
     MatchStep * lastMatch = nullptr;
@@ -110,7 +114,7 @@ void Tokenizer::tokenize() {
     commentEnd_ = Kind::none;
     while (true) {
         char c = get();
-        if (file_.eof())
+        if (file_.eof() and c == -1)
             break;
         state = state->next(c);
         temp += c;
@@ -138,20 +142,24 @@ void Tokenizer::tokenize() {
         processMatch(lastMatch, lastMatchPos, temp);
     if (not temp.empty())
         addToken(temp);
+    // line numbers start from 1 actually
+    if (f_.bytes_ > 0) {
+        ++f_.loc_;
+        --f_.bytes_;
+    }
 }
 
 void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string & temp) {
-
     // first if we are not in special mode, process previous token, if any
+    unsigned x = matchPos - match->length;
     if (commentEnd_ == Kind::none) {
         // first check if we have token
-        unsigned x = matchPos - match->length;
         if (x > 0) {
             addToken(temp.substr(0, x));
         }
     }
     // deal with new line
-    if (temp[matchPos] == '\n') {
+    if (temp[x] == '\n') {
         if (commentLine_ and inComment())
             ++f_.commentLoc_;
         else if (emptyLine_)
@@ -164,8 +172,8 @@ void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string &
     // if we are not in special mode, process tokens accordingly
     if (commentEnd_ == Kind::none) {
         // see if we are entering a comment or literal
-        if (match->kind != Kind::none) {
-            commentEnd_ = kindEndFor(match->kind);
+        commentEnd_ = kindEndFor(match->kind);
+        if (commentEnd_ != Kind::none) {
             // do not match the opening separator now
             matchPos -= match->length;
             emptyLine_ = false;
@@ -174,20 +182,25 @@ void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string &
         } else if (match->isSeparator) {
             commentLine_ = false;
             emptyLine_ = false;
+            f_.separatorBytes_ += match->length;
         } else {
             assert(match->isWhitespace);
             f_.whitespaceBytes_ += match->length;
         }
     // in special mode, do nothing unless we have reached the end token
-    } else if (commentEnd_ == match->kind) {
+    } else if (commentEnd_ == match->kind and not escaped_) {
         if (inComment()) {
-            f_.commentBytes_ += temp.size();
+            f_.commentBytes_ += matchPos;
         } else {
             // add the literal as one token
-            addToken(temp);
+            addToken(temp.substr(0, matchPos));
         }
         commentEnd_ = Kind::none;
     } else {
+        if (match->kind == escapeFor(commentEnd_))
+            escaped_ = true;
+        else
+            escaped_ = false;
         matchPos = 0;
     }
     // remove any matched token or separator from the temp string
@@ -200,7 +213,7 @@ void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string &
 
 
     // first check if we have token
-    unsigned x = matchPos - match->length;
+    x = matchPos - match->length;
     if (x > 0) {
         addToken(temp.substr(0, x));
     }

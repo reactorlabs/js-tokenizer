@@ -1,5 +1,12 @@
 #pragma once
 
+//   X    X  X
+// bytes comments whitespace tokens separators
+
+// 180,90,23,67,0,14,5,3,17
+
+// 180,94,16,74,18446744073709551612
+
 /** This include file contains the definitions for the particular language.
 
  Different languages may be supported by compiling the tokenizer with different language files.

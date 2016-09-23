@@ -126,7 +126,7 @@ public:
           << commentBytes_ << ","
           << whitespaceBytes_ << ","
           << tokenBytes_ << ","
-          << (bytes_ - commentBytes_ - whitespaceBytes_ - tokenBytes_) << "," // separator bytes
+          << separatorBytes_ << "," // separator bytes
           << loc_ << ","
           << commentLoc_ << ","
           << emptyLoc_ << ","
@@ -173,6 +173,7 @@ private:
     unsigned long commentBytes_ = 0;
     unsigned long whitespaceBytes_ = 0;
     unsigned long tokenBytes_ = 0;
+    unsigned long separatorBytes_ = 0;
 
     unsigned loc_ = 0;
     unsigned commentLoc_ = 0;

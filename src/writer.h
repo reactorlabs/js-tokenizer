@@ -154,7 +154,6 @@ private:
         leaveProcessing();
         // output file tokens and statistics
 
-
         if (not ((SOURCERERCC_IGNORE_EMPTY_FILES and empty) or
                  (SOURCERERCC_IGNORE_TOKENS_HASH_EQUIVALENTS and hashClone) or
                  (SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS) and fileClone)) {
@@ -164,7 +163,6 @@ private:
 
         // our data is always printed
         f->ourData(ourdata);
-        f->ourData(std::cout);
 
         // and finally, delete the file, if it is the last file in the project, deletes the project as well
         delete f;

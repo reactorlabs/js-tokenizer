@@ -77,8 +77,6 @@ void initializeCrawlers() {
 }
 
 /** Nice time printer.
-
-
  */
 std::string time(double sec) {
     unsigned s = static_cast<unsigned>(sec);
