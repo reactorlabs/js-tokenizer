@@ -7,6 +7,8 @@
 #include <sstream>
 #include <cstring>
 
+#include <iostream>
+
 #include "config.h"
 
 
@@ -26,14 +28,21 @@ public:
 private:
 
     friend std::ostream & operator << (std::ostream & s, escape const & str) {
-        for (size_t i = 0, e = str.s.size(); i != e; ++i) {
+        // escape AND and OR and NOT as they cause problems to sourcererCC
+        if (str.s == "AND")
+            s << "\\41ND";
+        else if (str.s == "OR")
+            s << "\\4fR";
+        else if (str.s == "NOT")
+            s << "\\4eOT";
+        else for (size_t i = 0, e = str.s.size(); i != e; ++i) {
             unsigned char c = str.s[i];
             if ((c < ' ') or (c > '~') or c == '#' or c == '@' or c == ',' or c == ':' or c == '\\') {
                 s << '\\';
-                unsigned char x = c / 16;
-                s << (x > 9) ? 'a' + (x - 10) : '0' + x;
+                char x = c / 16;
+                s << (char)((x > 9) ? ('a' + x - 10) : ('0' + x));
                 x = c % 16;
-                s << (x > 9) ? 'a' + (x - 10) : '0' + x;
+                s << (char)((x > 9) ? ('a' + x - 10) : ('0' + x));
             } else {
                 s << c;
             }
