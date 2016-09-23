@@ -144,9 +144,11 @@ private:
 #endif
 #if SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS == 1
         fileClone = fileHashMatches_[f->fileHash_] ++;
-        if (hashClone)
+        if (fileClone)
             ++fileClones_;
 #endif
+        if (empty)
+            ++emptyFiles_;
 
         // leave the multi-processing mode in multi-writer mode
         leaveProcessing();

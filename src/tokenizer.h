@@ -7,9 +7,7 @@
 
 #include "hashes/md5.h"
 
-#include "globals.h"
 #include "utils.h"
-#include "records.h"
 
 #include "data.h"
 

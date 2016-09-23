@@ -1,17 +1,50 @@
 #pragma once
 
+/** This include file contains the definitions for the particular language.
+
+ Different languages may be supported by compiling the tokenizer with different language files.
+ */
 #include "languages/javascript.h"
 
-#define PATH_OUTPUT "/home/peta/sourcerer/processed"
+/** Path to tokenizer's output.
 
+  This path will be created and it is better if it does not exist. In it the PATH_STATS_FILE, PATH_BOOKKEEPING_PROJS, PATH_TOKENS_FILE and PATH_OUR_DAT_FILE folders will be created, into which the respective output files will be put by the writers.
+ */
+#define PATH_OUTPUT "/home/peta/sourcerer/processedV3"
+
+/** Path to the projects.
+
+  Multiple roots can be specified. Any subdirectory that is a git project will be considered and tokenized.
+
+  The tokenizer determines the git origin url by reading the `.git/config` file, which has to be present.
+ */
 #define PATH_INPUT(ENTRY) \
-    ENTRY("/home/peta/sourcerer/data")
+    ENTRY("/home/peta/sourcerer/data/jakub2")
 
+
+/** If 1, each thread will input additional information about what it is doing.
+ */
 #define VERBOSE 0
 
+/** Crawlers are worker threads responsible for walking the directory structure, finding git projects and tokenizing the files they contain.
 
+  This number defines the number of crawler threads that will be created by the tokenizer.
+ */
 #define NUM_CRAWLERS 8
 
+/** When crawler thread finds a git project, it tokenizes all its files in the same thread, but if it finds a regular directory, it may operate in two modes:
+
+  - if the crawler's job queue is smaller than this number, the crawler will append any subdirectory it finds to the job queue
+  - if the job queue is longer than this number, the crawler will recurse into the directory itself
+ */
+#define CRAWLER_QUEUE_THRESHOLD (1000 * NUM_CRAWLERS)
+
+/** Writers are workers responsible for writing the stats and tokens records of tokenized files as well as other bookkeeping.
+
+  Each writer thread has its own output files in each of the output directories.
+
+  Usually there more writer threads are of little help as the bottleneck of writer thread is the disk speed.
+ */
 #define NUM_WRITERS 1
 
 
@@ -22,6 +55,8 @@
 #define PATH_OUR_DATA_FILE "our_data"
 
 
+
+#define IGNORE_GIT_FOLDER 1
 
 #define SOURCERERCC_IGNORE_EMPTY_FILES 1
 

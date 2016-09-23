@@ -135,11 +135,23 @@ private:
                 // skip . and ..
                 if (strcmp(ent->d_name, ".") == 0 or strcmp(ent->d_name, "..") == 0)
                     continue;
+#if IGNORE_GIT_FOLDER == 1
+                // if the folder name is .git, do not crawl it
+                if (strcmp(ent->d_name, ".git") == 0)
+                    continue;
+#endif
                 // check if the thing we see is a directory and append it to the queue if so
                 std::string path = dir + "/" + ent->d_name;
                 if (isDirectory(path)) {
-                    Worker::log(this, STR("Adding job for directory " << path));
-                    addDirectoryToCrawl(path);
+                    // depending on the size of the crawler's queue, either process the directory in this thread
+                    if (queueSize() > CRAWLER_QUEUE_THRESHOLD) {
+                        Worker::log(this, STR("Queue too large, recursing into " << path));
+                        processDirectory(path);
+                    // or go through the scheduling
+                    } else {
+                        Worker::log(this, STR("Adding job for directory " << path));
+                        addDirectoryToCrawl(path);
+                    }
                 }
             }
             closedir(d);
