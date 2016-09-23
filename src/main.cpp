@@ -2,6 +2,7 @@
 #include <mutex>
 #include <thread>
 #include <chrono>
+#include <iomanip>
 
 
 
@@ -75,6 +76,19 @@ void initializeCrawlers() {
     Writer::print(STR("Created " << NUM_CRAWLERS << " crawler threads"));
 }
 
+/** Nice time printer.
+
+
+ */
+std::string time(double sec) {
+    unsigned s = static_cast<unsigned>(sec);
+    s = s % 60;
+    unsigned m = s / 60;
+    m = m % 60;
+    unsigned h = m / 60;
+    return STR(h << ":" << std::setfill('0') << std::setw(2) << m << ":" << s);
+}
+
 void report() {
     unsigned long processedFiles = Writer::processedFiles();
     double processedMB = Writer::processedBytes() / 1024.0 / 1024 ;
@@ -82,7 +96,7 @@ void report() {
     unsigned pendingFiles = Writer::queueSize();
     auto now = std::chrono::high_resolution_clock::now();
     double s = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() / 1000.0;
-    Worker::print(STR("Duration " << s << "[s] : Processed " << processedFiles << " files, " << processedMB << " MB; throughput " << (processedMB / s) << "[MB/s]; pending " << pendingJobs << " jobs, " << pendingFiles << " writes."));
+    Worker::print(STR("Duration " << time(s) << "[h:m:s] : Processed " << processedFiles << " files, " << processedMB << " MB; throughput " << (processedMB / s) << "[MB/s]; pending " << pendingJobs << " jobs, " << pendingFiles << " writes."));
 }
 
 void done() {
@@ -94,7 +108,7 @@ void done() {
     auto now = std::chrono::high_resolution_clock::now();
     double s = std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() / 1000.0;
     Worker::print("---");
-    Worker::print(STR("Total time:            " << s << " [s]"));
+    Worker::print(STR("Total time:            " << time(s) << " [h:m:s]"));
     Worker::print(STR("Projects processed:    " << Writer::processedProjects()));
     Worker::print(STR("Files processed:       " << Writer::processedFiles()));
     Worker::print(STR("Total size:            " << Writer::processedBytes() / 1024.0 / 1024 << "[MB]"));
