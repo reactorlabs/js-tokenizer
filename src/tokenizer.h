@@ -30,17 +30,33 @@ public:
 
 private:
 
-    enum class CommentKind {
+    enum class Kind {
 #define GENERATE_COMMENT_KIND(START, END, NAME) NAME ## _start, NAME ## _end,
+#define GENERATE_LITERAL_KIND(START, END, ESCAPE, NAME) NAME ##_start, NAME ## _end, NAME ## _escape,
         COMMENTS(GENERATE_COMMENT_KIND)
+        LITERALS(GENERATE_LITERAL_KIND)
         none,
     };
 
+    static bool isCommentKind(Kind k) {
+        // no need to deal with ends
+#define IS_COMMENT(START, END, NAME) if (k == Kind::NAME ##_start) return true;
+        COMMENTS(IS_COMMENT)
+        return false;
+    }
+
+    static bool isLiteralKind(Kind k) {
+        // no need to deal with ends
+#define IS_LITERAL(START, END, ESCAPE, NAME) if (k == Kind::NAME ##_start) return true;
+        LITERALS(IS_LITERAL)
+        return false;
+    }
+
     /** Returns the corresponding end comment kind. */
-    static CommentKind commentEndFor(CommentKind k) {
-#define GENERATE_COMMENT_END_FOR(START, END, NAME) if (k == CommentKind::NAME ## _start) return CommentKind::NAME ## _end;
+    static Kind kindEndFor(Kind k) {
+#define GENERATE_COMMENT_END_FOR(START, END, NAME) if (k == Kind::NAME ## _start) return Kind::NAME ## _end;
         COMMENTS(GENERATE_COMMENT_END_FOR)
-        return CommentKind::none;
+        return Kind::none;
     }
 
     class MatchStep;
@@ -55,7 +71,17 @@ private:
     /** Returns true if tokenize is inside a comment
      */
     bool inComment() const {
-        return commentEnd_ != CommentKind::none;
+#define GENERATE_COMMENT_END_CHECK(START, END, NAME) if (commentEnd_ == Kind::NAME ## _end) return true;
+        COMMENTS(GENERATE_COMMENT_END_CHECK)
+        return false;
+    }
+
+    /** Returns true if tokenize is inside a literal
+     */
+    bool inLiteral() const {
+#define GENERATE_LITERAL_END_CHECK(START, END, ESCAPE, NAME) if (commentEnd_ == Kind::NAME ## _end) return true;
+        LITERALS(GENERATE_LITERAL_END_CHECK)
+        return false;
     }
 
 
@@ -92,7 +118,7 @@ private:
 
     /** Either CommentKind::invalid if tokenization is not inside a comment, or comment kind to end the comment if inside comment.
      */
-    CommentKind commentEnd_;
+    Kind commentEnd_;
 
     /** True if there was only whitespace in the last line.
      */

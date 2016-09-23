@@ -23,7 +23,7 @@ class Tokenizer::MatchStep {
         unsigned length = 0;
         /** Comment kind, if any
          */
-        CommentKind kind = CommentKind::none;
+        Kind kind = Kind::none;
         /** true if the matched string is separator.
 
           We need these because comments end may be whitespaces, or separators under normal circumstances.
@@ -37,7 +37,7 @@ class Tokenizer::MatchStep {
 
         /** Adds given match to the matching FSM.
          */
-        void addMatch(std::string const & what, CommentKind kind, bool isSeparator, bool isWhitespace) {
+        void addMatch(std::string const & what, Kind kind, bool isSeparator, bool isWhitespace) {
             MatchStep * state = this;
             for (size_t i = 0, e = what.size(); i != e; ++i) {
                 auto it = state->next_.find(what[i]);
@@ -45,7 +45,7 @@ class Tokenizer::MatchStep {
                     it = state->next_.insert(std::pair<char, MatchStep *>(what[i], new MatchStep())).first;
                 state = it->second;
             }
-            if (kind != CommentKind::none)
+            if (kind != Kind::none)
                 state->kind = kind;
             if (isSeparator)
                 state->isSeparator = true;
@@ -67,10 +67,10 @@ void Tokenizer::initializeLanguage() {
     unsigned w = 0;
     unsigned c = 0;
     unsigned s = 0;
-#define GENERATE_WHITESPACE_MATCH(X) start.addMatch(X, CommentKind::none, false, true); ++w;
-#define GENERATE_COMMENTS_MATCH(START, END, NAME) start.addMatch(START, CommentKind::NAME ## _start, false, false); \
-    start.addMatch(END, CommentKind::NAME ## _end, false, false); ++c;
-#define GENERATE_SEPARATORS_MATCH(X) start.addMatch(X, CommentKind::none, true, false); ++s;
+#define GENERATE_WHITESPACE_MATCH(X) start.addMatch(X, Kind::none, false, true); ++w;
+#define GENERATE_COMMENTS_MATCH(START, END, NAME) start.addMatch(START, Kind::NAME ## _start, false, false); \
+    start.addMatch(END, Kind::NAME ## _end, false, false); ++c;
+#define GENERATE_SEPARATORS_MATCH(X) start.addMatch(X, Kind::none, true, false); ++s;
     WHITESPACE(GENERATE_WHITESPACE_MATCH)
     COMMENTS(GENERATE_COMMENTS_MATCH)
     SEPARATORS(GENERATE_SEPARATORS_MATCH)
@@ -100,14 +100,14 @@ char Tokenizer::get() {
 }
 
 void Tokenizer::tokenize() {
-    commentEnd_ = CommentKind::none;
+    commentEnd_ = Kind::none;
     emptyLine_ = true;
     commentLine_ = true;
     std::string temp;
     MatchStep * state = initialState_;
     MatchStep * lastMatch = nullptr;
     unsigned lastMatchPos = 0;
-    commentEnd_ = CommentKind::none;
+    commentEnd_ = Kind::none;
     while (true) {
         char c = get();
         if (file_.eof())
@@ -141,6 +141,64 @@ void Tokenizer::tokenize() {
 }
 
 void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string & temp) {
+
+    // first if we are not in special mode, process previous token, if any
+    if (commentEnd_ == Kind::none) {
+        // first check if we have token
+        unsigned x = matchPos - match->length;
+        if (x > 0) {
+            addToken(temp.substr(0, x));
+        }
+    }
+    // deal with new line
+    if (temp[matchPos] == '\n') {
+        if (commentLine_ and inComment())
+            ++f_.commentLoc_;
+        else if (emptyLine_)
+            ++f_.emptyLoc_;
+        ++f_.loc_;
+        emptyLine_ = true;
+        commentLine_ = not inLiteral();
+    }
+
+    // if we are not in special mode, process tokens accordingly
+    if (commentEnd_ == Kind::none) {
+        // see if we are entering a comment or literal
+        if (match->kind != Kind::none) {
+            commentEnd_ = kindEndFor(match->kind);
+            // do not match the opening separator now
+            matchPos -= match->length;
+            emptyLine_ = false;
+            if (not inComment())
+                commentLine_ = false;
+        } else if (match->isSeparator) {
+            commentLine_ = false;
+            emptyLine_ = false;
+        } else {
+            assert(match->isWhitespace);
+            f_.whitespaceBytes_ += match->length;
+        }
+    // in special mode, do nothing unless we have reached the end token
+    } else if (commentEnd_ == match->kind) {
+        if (inComment()) {
+            f_.commentBytes_ += temp.size();
+        } else {
+            // add the literal as one token
+            addToken(temp);
+        }
+        commentEnd_ = Kind::none;
+    } else {
+        matchPos = 0;
+    }
+    // remove any matched token or separator from the temp string
+    if (matchPos != 0)
+        temp = temp.substr(matchPos);
+
+    return;
+
+
+
+
     // first check if we have token
     unsigned x = matchPos - match->length;
     if (x > 0) {
@@ -160,12 +218,12 @@ void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string &
     if (inComment()) {
         f_.commentBytes_ += match->length;
         if (match->kind == commentEnd_) {
-            commentEnd_ = CommentKind::none;
+            commentEnd_ = Kind::none;
         }
     // if we are not in a comment, we may start a new one
     } else {
-        if (match->kind != CommentKind::none)
-            commentEnd_ = commentEndFor(match->kind);
+        if (match->kind != Kind::none)
+            commentEnd_ = kindEndFor(match->kind);
         // if we have comment end, we are inside comment
         if (inComment()) {
             f_.commentBytes_ += match->length;

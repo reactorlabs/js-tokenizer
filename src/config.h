@@ -19,7 +19,7 @@
   The tokenizer determines the git origin url by reading the `.git/config` file, which has to be present.
  */
 #define PATH_INPUT(ENTRY) \
-    ENTRY("/home/peta/sourcerer/data/jakub2")
+    ENTRY("/home/peta/sourcerer/data/test")
 
 
 /** If 1, each thread will input additional information about what it is doing.
@@ -30,7 +30,7 @@
 
   This number defines the number of crawler threads that will be created by the tokenizer.
  */
-#define NUM_CRAWLERS 8
+#define NUM_CRAWLERS 1
 
 /** When crawler thread finds a git project, it tokenizes all its files in the same thread, but if it finds a regular directory, it may operate in two modes:
 

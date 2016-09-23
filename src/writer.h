@@ -164,6 +164,7 @@ private:
 
         // our data is always printed
         f->ourData(ourdata);
+        f->ourData(std::cout);
 
         // and finally, delete the file, if it is the last file in the project, deletes the project as well
         delete f;

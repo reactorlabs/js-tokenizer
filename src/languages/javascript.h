@@ -11,6 +11,12 @@
     ENTRY("\t") \
     ENTRY("\n")
 
+// start, end, escape, empty for no escape
+#define LITERALS(ENTRY) \
+    ENTRY("\"", "\"", "\\", singleQuote) \
+    ENTRY("'", "'", "\\", doubleQuote)
+
+
 #define COMMENTS(ENTRY) \
     ENTRY("//","\n", single) \
     ENTRY("/*", "*/", multi)
@@ -54,8 +60,5 @@
     ENTRY("}") \
     ENTRY("=") \
     ENTRY("#") \
-    ENTRY("\"") \
-    ENTRY("\\") \
     ENTRY(":") \
-    ENTRY("$") \
-    ENTRY("'")
+    ENTRY("$")
