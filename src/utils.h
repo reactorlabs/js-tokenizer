@@ -100,7 +100,7 @@ inline void createDirectory(std::string const & path) {
 
 inline bool isDirectory(std::string const & path) {
     struct stat s;
-    if (stat(path.c_str(),&s) == 0 ) {
+    if (lstat(path.c_str(),&s) == 0 ) {
         if( s.st_mode & S_IFDIR )
             return true;
     }

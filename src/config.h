@@ -19,7 +19,7 @@
   The tokenizer determines the git origin url by reading the `.git/config` file, which has to be present.
  */
 #define PATH_INPUT(ENTRY) \
-    ENTRY("/home/peta/sourcerer/data/jakub2")
+    ENTRY("/home/peta/sourcerer/data/test")
 
 
 /** If 1, each thread will input additional information about what it is doing.
@@ -48,19 +48,32 @@
 #define NUM_WRITERS 1
 
 
-
+/** These are the names of output directories for different outputs. The names are identical to SourcererCC's default tokenizer.
+ */
 #define PATH_STATS_FILE "files_stats"
 #define PATH_BOOKKEEPING_PROJS "bookkeeping_projs"
 #define PATH_TOKENS_FILE "files_tokens"
+
+/** Output to our data format that outputs all files and all statistics we analyze.
+ */
 #define PATH_OUR_DATA_FILE "our_data"
 
 
-
+/** This ignores crawling the `.git` folder in git projects. I think there should be no reason to turn this off.
+ */
 #define IGNORE_GIT_FOLDER 1
 
+/** When 1, does not output empty files to sourcererCC statistics.
+ */
 #define SOURCERERCC_IGNORE_EMPTY_FILES 1
 
+/** When 1, does not output entire file hash equivalent files to sourcererCC, outputs only the first one.
+
+  Note that if two files are hash-equivalent, they must be also tokens-hash equivalent.
+ */
 #define SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS 1
 
+/** When 1, does not output tokens hash equivalent files to sourcererCC, outputs only the first one.
+ */
 #define SOURCERERCC_IGNORE_TOKENS_HASH_EQUIVALENTS 1
 
