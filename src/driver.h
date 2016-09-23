@@ -1,3 +1,4 @@
+#ifdef HAHA
 #pragma once
 
 #include <vector>
@@ -106,3 +107,4 @@ private:
 
 
 };
+#endif

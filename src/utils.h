@@ -1,5 +1,8 @@
 #pragma once
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <ostream>
 #include <sstream>
 #include <cstring>
@@ -90,5 +93,18 @@ inline bool isLanguageFile(std::string const & name) {
     return false;
 }
 
-class FileRecord;
-class ProjectRecord;
+inline void createDirectory(std::string const & path) {
+    if (system(STR("mkdir -p " << path).c_str()) != EXIT_SUCCESS)
+        throw STR("Unable to create directory " << path);
+}
+
+inline bool isDirectory(std::string const & path) {
+    struct stat s;
+    if (stat(path.c_str(),&s) == 0 ) {
+        if( s.st_mode & S_IFDIR )
+            return true;
+    }
+    return false;
+}
+
+

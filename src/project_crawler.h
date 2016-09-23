@@ -1,3 +1,4 @@
+#ifdef HAHA
 #pragma once
 
 #include <dirent.h>
@@ -87,3 +88,4 @@ private:
     ProjectRecord record_;
     OutputFiles & output_;
 };
+#endif

@@ -1,3 +1,4 @@
+#ifdef HAHA
 #include "driver.h"
 
 namespace {
@@ -121,3 +122,4 @@ void Driver::crawlProject(std::string const & path, std::string const & url) {
     t.detach();
 }
 
+#endif

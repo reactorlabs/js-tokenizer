@@ -1,3 +1,4 @@
+#ifdef HAHA
 #pragma once
 
 #include <atomic>
@@ -20,3 +21,4 @@ extern std::map<std::string, unsigned> exactTokenMatches;
 // hashmap for exact matches in files
 extern std::map<std::string, unsigned> exactFileMatches;
 
+#endif

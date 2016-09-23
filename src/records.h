@@ -1,3 +1,4 @@
+#ifdef haha
 #pragma once
 
 
@@ -183,3 +184,4 @@ struct OutputFiles {
 
 
 
+#endif
