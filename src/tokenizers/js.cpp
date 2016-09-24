@@ -44,7 +44,14 @@ char JSTokenizer::peek(int offset) {
 
 std::string JSTokenizer::substr(size_t start, size_t end) {
 #if JS_TOKENIZER_ENTIRE_FILE == 1
-    return data_.substr(start, end - start);
+    try {
+        return data_.substr(start, end - start);
+    } catch (...) {
+        std::cout << f_.absPath() << std::endl;
+        std::cout << "ouch" << std::endl;
+        exit(-1);
+    }
+
 #endif
 }
 
@@ -55,7 +62,7 @@ void JSTokenizer::updateFileHash() {
 }
 
 void JSTokenizer::addToken(size_t start) {
-    //std::cout << "Token: " << substr(start, pos()) << std::endl;
+    std::cout << "Token: " << substr(start, pos()) << std::endl;
     ++f_.tokens_[substr(start, pos_)];
     f_.tokenBytes_ += pos_ - start;
     ++f_.totalTokens_;
@@ -63,19 +70,19 @@ void JSTokenizer::addToken(size_t start) {
 }
 
 void JSTokenizer::addSeparator(size_t start) {
-    //std::cout << "Separator: " << substr(start, pos()) << std::endl;
+    std::cout << "Separator: " << substr(start, pos()) << std::endl;
     f_.separatorBytes_ += pos_ - start;
     commentLine_ = false;
 }
 
 void JSTokenizer::addComment(size_t start) {
-    //std::cout << "Comment: " << substr(start, pos()) << std::endl;
+    std::cout << "Comment: " << substr(start, pos()) << std::endl;
     f_.commentBytes_ += pos_ - start;
     emptyLine_ = false;
 }
 
 void JSTokenizer::addWhitespace(size_t start) {
-    //std::cout << "Whitespace: " << substr(start, pos()) << std::endl;
+    std::cout << "Whitespace: " << substr(start, pos()) << std::endl;
     f_.whitespaceBytes_ += pos_ - start;
 }
 
@@ -95,15 +102,25 @@ void JSTokenizer::newline() {
 void JSTokenizer::numericLiteral() {
     size_t start = pos();
     // check if it is hex number
-    if (top() == '0' and (peek(1) == 'x' or peek(1) == 'X')) {
-        while(not eof() and isHexDigit(top()))
-            pop(1);
-    } else {
-        while (not eof() and isDecimalDigit(top()))
-            pop(1);
-        numericLiteralFloatingPointPart();
-        numericLiteralExponentPart();
+    if (top() == '0') {
+        if (peek(1) == 'x' or peek(1) == 'X') {
+            while(not eof() and isHexDigit(top()))
+                pop(1);
+            addToken(start);
+        } else if (peek(1) == 'o' or peek(1) == 'O') {
+            while(not eof() and isOctDigit(top()))
+                pop(1);
+            addToken(start);
+        } else if (peek(1) == 'b' or peek(1) == 'B') {
+            while(not eof() and isBinDigit(top()))
+                pop(1);
+            addToken(start);
+        }
     }
+    while (not eof() and isDecDigit(top()))
+        pop(1);
+    numericLiteralFloatingPointPart();
+    numericLiteralExponentPart();
     addToken(start);
 }
 
@@ -111,7 +128,7 @@ void JSTokenizer::numericLiteral() {
 void JSTokenizer::numericLiteralFloatingPointPart() {
     if (top() == '.') {
         pop(1);
-        while (not eof() and isDecimalDigit(top()))
+        while (not eof() and isDecDigit(top()))
             pop(1);
     }
 }
@@ -121,7 +138,7 @@ void JSTokenizer::numericLiteralExponentPart() {
         pop(1);
         if (top() == '-' or top() == '+')
             pop(1);
-        while (not eof() and isDecimalDigit(top()))
+        while (not eof() and isDecDigit(top()))
             pop(1);
     }
 }
@@ -132,7 +149,7 @@ void JSTokenizer::stringLiteral() {
     char delimiter = top();
     pop(1);
     while (not eof() and top() != delimiter) {
-        if (top() == '\\' and peek(1) == delimiter)
+        if (top() == '\\')
             pop(1);
         else if (top() == '\n')
             newline();
@@ -145,8 +162,14 @@ void JSTokenizer::stringLiteral() {
 void JSTokenizer::regularExpressionLiteral() {
     unsigned start = pos();
     pop(1);
-    while (not eof() and top() != '/')
+    while (not eof() and top() != '/') {
+        if (top() == '\\' and peek(1) == '/')
+            pop(1);
         pop(1);
+
+    }
+    if (not eof())
+        pop(1); // the /
     // now parse the flags, as if identifier
     while (isIdentifier(top()))
         pop(1);
@@ -164,10 +187,11 @@ void JSTokenizer::singleLineComment() {
     unsigned start = pos();
     emptyLine_ = false; // the line definitely contains at least the comment
     pop(2); // //
-    while (top() != '\n')
+    while (not eof() and top() != '\n')
         pop(1);
     newline();
-    pop(1);
+    if (not eof())
+        pop(1);
     addComment(start);
 }
 
@@ -199,6 +223,8 @@ void JSTokenizer::tokenize() {
     size_t e = size();
     bool expectRegExp = true;
     while (pos() != e) {
+        if (pos() + 5 > e)
+            std::cout << "close";
         size_t start = pos();
         switch (top()) {
             case '\n':
@@ -224,6 +250,7 @@ void JSTokenizer::tokenize() {
                 continue; // i.e. expect regexp false
             case '"':
             case '\'':
+            case '`': // backticks multi-line string literal, ECMA 6
                 stringLiteral();
                 expectRegExp = false;
                 continue; // i.e. expect regexp false
@@ -358,7 +385,7 @@ void JSTokenizer::tokenize() {
                 addSeparator(start);
                 break;
             case '.':
-                if (isDecimalDigit(peek(1))) {
+                if (isDecDigit(peek(1))) {
                     numericLiteralFloatingPointPart();
                     numericLiteralExponentPart();
                     addToken(start);

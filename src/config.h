@@ -14,7 +14,7 @@
 
   This path will be created and it is better if it does not exist. In it the PATH_STATS_FILE, PATH_BOOKKEEPING_PROJS, PATH_TOKENS_FILE and PATH_OUR_DAT_FILE folders will be created, into which the respective output files will be put by the writers.
  */
-#define PATH_OUTPUT "/home/peta/sourcerer/processedV3"
+#define PATH_OUTPUT "/home/peta/sourcerer/processedV4"
 
 /** Path to the projects.
 

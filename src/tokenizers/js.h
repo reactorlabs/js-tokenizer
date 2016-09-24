@@ -23,12 +23,20 @@ private:
         f_(*f) {
     }
 
-    static bool isDecimalDigit(char c) {
+    static bool isDecDigit(char c) {
         return c >= '0' and c <= '9';
     }
 
+    static bool isOctDigit(char c) {
+        return c >= '0' and c <= '7';
+    }
+
+    static bool isBinDigit(char c) {
+        return c >= '0' and c <= '1';
+    }
+
     static bool isHexDigit(char c) {
-        return isDecimalDigit(c) or (c >= 'A' and c <= 'F') or (c >= 'a' and c <= 'f');
+        return isDecDigit(c) or (c >= 'A' and c <= 'F') or (c >= 'a' and c <= 'f');
     }
 
     /** This works the other way around. Thanks to UTF anything is an identifier, unless it is one of the separators.
