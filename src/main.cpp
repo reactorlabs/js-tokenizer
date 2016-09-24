@@ -10,7 +10,7 @@
 #include "worker.h"
 #include "crawler.h"
 #include "writer.h"
-#include "tokenizer.h"
+#include "tokenizers/generic.h"
 
 
 

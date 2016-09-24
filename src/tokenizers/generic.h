@@ -5,11 +5,11 @@
 #include <cassert>
 #include <iostream>
 
-#include "hashes/md5.h"
+#include "../hashes/md5.h"
 
-#include "utils.h"
+#include "../utils.h"
 
-#include "data.h"
+#include "../data.h"
 
 
 class Tokenizer {

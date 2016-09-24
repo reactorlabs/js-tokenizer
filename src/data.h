@@ -152,6 +152,7 @@ public:
 private:
     friend class Writer;
     friend class Tokenizer;
+    friend class JSTokenizer;
 
     /** Calculates hash of the unique tokens and their frequencies in the file.
      */

@@ -10,7 +10,8 @@
 #include "utils.h"
 #include "data.h"
 #include "writer.h"
-#include "tokenizer.h"
+#include "tokenizers/generic.h"
+#include "tokenizers/js.h"
 #include "worker.h"
 
 /** Crawls the directory structures available and tokenizes files in projects.
@@ -193,7 +194,7 @@ private:
      */
     void processFile(TokenizedFile * f) {
         Writer::log(this, STR("tokenizing file " << f->absPath()));
-        Tokenizer::tokenize(f);
+        JSTokenizer::tokenize(f);
         Writer::log(this, STR("submitting file " << f->absPath() << " to writers"));
         Writer::addTokenizedFile(f);
     }

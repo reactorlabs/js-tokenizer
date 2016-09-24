@@ -1,5 +1,5 @@
-#include "worker.h"
-#include "tokenizer.h"
+#include "../worker.h"
+#include "generic.h"
 
 
 class Tokenizer::MatchStep {
