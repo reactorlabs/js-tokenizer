@@ -182,9 +182,13 @@ void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string &
             commentLine_ = false;
             emptyLine_ = false;
             f_.separatorBytes_ += match->length;
-        } else {
-            assert(match->isWhitespace);
+        } else if (match->isWhitespace) {
             f_.whitespaceBytes_ += match->length;
+        } else {
+            // default is separator for nonsensical characters
+            commentLine_ = false;
+            emptyLine_ = false;
+            f_.separatorBytes_ += match->length;
         }
     // in special mode, do nothing unless we have reached the end token
     } else if (commentEnd_ == match->kind) {
