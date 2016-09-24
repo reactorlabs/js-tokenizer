@@ -106,7 +106,6 @@ void Tokenizer::tokenize() {
     commentEnd_ = Kind::none;
     emptyLine_ = true;
     commentLine_ = true;
-    escaped_ = false;
     std::string temp;
     MatchStep * state = initialState_;
     MatchStep * lastMatch = nullptr;
@@ -188,7 +187,7 @@ void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string &
             f_.whitespaceBytes_ += match->length;
         }
     // in special mode, do nothing unless we have reached the end token
-    } else if (commentEnd_ == match->kind and not escaped_) {
+    } else if (commentEnd_ == match->kind) {
         if (inComment()) {
             f_.commentBytes_ += matchPos;
         } else {
@@ -197,10 +196,6 @@ void Tokenizer::processMatch(MatchStep * match, unsigned matchPos, std::string &
         }
         commentEnd_ = Kind::none;
     } else {
-        if (match->kind == escapeFor(commentEnd_))
-            escaped_ = true;
-        else
-            escaped_ = false;
         matchPos = 0;
     }
     // remove any matched token or separator from the temp string

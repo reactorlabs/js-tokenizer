@@ -137,6 +137,4 @@ private:
     /** True if the line contains only comments.
      */
     bool commentLine_;
-
-    bool escaped_;
 };
