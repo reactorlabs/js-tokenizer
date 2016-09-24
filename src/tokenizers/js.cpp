@@ -47,10 +47,12 @@ std::string JSTokenizer::substr(size_t start, size_t end) {
     try {
         return data_.substr(start, end - start);
     } catch (...) {
-        std::cout << f_.absPath() << std::endl;
+        std::cout << "HERE I FAIL: " << f_.absPath() << std::endl;
         std::cout << "ouch" << std::endl;
-        exit(-1);
+        system(STR("mv " << f_.absPath() << " " << "/home/peta/sourcerer/data/errors").c_str());
+        throw "continuing";
     }
+    return "";
 
 #endif
 }
@@ -62,7 +64,7 @@ void JSTokenizer::updateFileHash() {
 }
 
 void JSTokenizer::addToken(size_t start) {
-    std::cout << "Token: " << substr(start, pos()) << std::endl;
+    //std::cout << "Token: " << substr(start, pos()) << std::endl;
     ++f_.tokens_[substr(start, pos_)];
     f_.tokenBytes_ += pos_ - start;
     ++f_.totalTokens_;
@@ -70,19 +72,19 @@ void JSTokenizer::addToken(size_t start) {
 }
 
 void JSTokenizer::addSeparator(size_t start) {
-    std::cout << "Separator: " << substr(start, pos()) << std::endl;
+    //std::cout << "Separator: " << substr(start, pos()) << std::endl;
     f_.separatorBytes_ += pos_ - start;
     commentLine_ = false;
 }
 
 void JSTokenizer::addComment(size_t start) {
-    std::cout << "Comment: " << substr(start, pos()) << std::endl;
+    //std::cout << "Comment: " << substr(start, pos()) << std::endl;
     f_.commentBytes_ += pos_ - start;
     emptyLine_ = false;
 }
 
 void JSTokenizer::addWhitespace(size_t start) {
-    std::cout << "Whitespace: " << substr(start, pos()) << std::endl;
+    // std::cout << "Whitespace: " << substr(start, pos()) << std::endl;
     f_.whitespaceBytes_ += pos_ - start;
 }
 
@@ -155,15 +157,15 @@ void JSTokenizer::stringLiteral() {
             newline();
         pop(1);
     }
+    // TODO if not eof
     pop(1); // delimiter
-    addToken(start);
 }
 
 void JSTokenizer::regularExpressionLiteral() {
     unsigned start = pos();
     pop(1);
     while (not eof() and top() != '/') {
-        if (top() == '\\' and peek(1) == '/')
+        if (top() == '\\') // any escape will do
             pop(1);
         pop(1);
 
@@ -172,6 +174,27 @@ void JSTokenizer::regularExpressionLiteral() {
         pop(1); // the /
     // now parse the flags, as if identifier
     while (isIdentifier(top()))
+        pop(1);
+    addToken(start);
+}
+
+// TODO deal with strings accordingly
+// TODO make a switch to support or not
+void JSTokenizer::ex4() {
+    unsigned start = pos();
+    pop(1); // <
+    while (not eof() and top() != '>') {
+        if (top() == '\\' and peek(1) == '/') {
+            pop(1);
+        } else if (top() == '\n') {
+            newline();
+        } else if (top() == '"' or top() == '\'') {
+            stringLiteral();
+            continue;
+        }
+        pop(1);
+    }
+    if (not eof())
         pop(1);
     addToken(start);
 }
@@ -223,8 +246,6 @@ void JSTokenizer::tokenize() {
     size_t e = size();
     bool expectRegExp = true;
     while (pos() != e) {
-        if (pos() + 5 > e)
-            std::cout << "close";
         size_t start = pos();
         switch (top()) {
             case '\n':
@@ -234,7 +255,7 @@ void JSTokenizer::tokenize() {
             case '\r':
                 pop(1);
                 addWhitespace(start);
-                break;
+                continue; // do not change regexp expectations
             case '0':
             case '1':
             case '2':
@@ -252,13 +273,11 @@ void JSTokenizer::tokenize() {
             case '\'':
             case '`': // backticks multi-line string literal, ECMA 6
                 stringLiteral();
+                addToken(start);
                 expectRegExp = false;
                 continue; // i.e. expect regexp false
             case '/':
-                if (peek(1) == '=') {
-                    pop(2);
-                    addSeparator(start);
-                } else if (peek(1) == '/') {
+                if (peek(1) == '/') {
                     singleLineComment();
                 } else if (peek(1) == '*') {
                     multiLineComment();
@@ -266,6 +285,9 @@ void JSTokenizer::tokenize() {
                     regularExpressionLiteral();
                     expectRegExp = false;
                     continue; // i.e. expect regexp false
+                } else if (peek(1) == '=') {
+                    pop(2);
+                    addSeparator(start);
                 } else {
                     pop(1);
                     addSeparator(start);
@@ -300,6 +322,8 @@ void JSTokenizer::tokenize() {
                     }
                 } else if (peek(1) == '=') {
                     pop(2); // <=
+                } else if (peek(1) == '/') {
+                    pop(2); // </ -- this is hack to somehow parse E4X
                 } else {
                     pop(1); // <
                 }

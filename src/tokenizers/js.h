@@ -115,9 +115,15 @@ private:
 
     void numericLiteralExponentPart();
 
+    /** String literal only advances, it must be appended manually afterwards.
+     */
     void stringLiteral();
 
     void regularExpressionLiteral();
+
+    /** This is a horrible now depreated feature in which HTML code can be embedded directly into JavaScript code.
+     */
+    void ex4();
 
     void identifierOrKeyword();
 
