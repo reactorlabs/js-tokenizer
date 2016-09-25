@@ -34,15 +34,20 @@ public:
     static void addDirAndCheck(std::string const & path) {
         if (not isDirectory(path))
             throw STR("Unable to add directory " << path << " to crawler's queue");
-        addDirectoryToCrawl(path);
+        addJob(Job(path));
     }
 
     void run() {
         Writer::print(this, "Started...");
         while (true) {
             try {
-                std::string path = getSomethingToCrawl();
-                processDirectory(path);
+                Job job = getSomethingToCrawl();
+                if (job.project == nullptr) {
+                    processDirectory(job.directory);
+                } else {
+                    processProjectDirectory(job.project, job.directory, job.relPath);
+                    job.project->close();
+                }
             } catch (std::string const & e) {
                 Writer::error(this, e);
             } catch (std::exception const & e) {
@@ -68,14 +73,32 @@ public:
 
 private:
 
-    static void addDirectoryToCrawl(std::string const & path) {
+    struct Job {
+        std::string directory;
+        GithubProject * project;
+        std::string relPath;
+
+        Job(std::string const & directory):
+            directory(directory),
+            project(nullptr) {
+        }
+
+        Job(GithubProject * project, std::string const & directory, std::string const & relPath):
+            directory(directory),
+            project(project),
+            relPath(relPath) {
+            // increase the counter so that we do not delete the project prematurely
+            ++project->files_;
+        }
+    };
+    static void addJob(Job const & job) {
         std::lock_guard<std::mutex> g(dirsAccess_);
-        dirs_.push(path);
-        Worker::log(STR("Added crawl job  " << path << ", q size " << dirs_.size()));
+        dirs_.push(job);
+        Worker::log(STR("Added crawl job  " << job.directory << ", q size " << dirs_.size()));
         dirsCV_.notify_one();
     }
 
-    static std::string getSomethingToCrawl() {
+    static Job getSomethingToCrawl() {
         std::unique_lock<std::mutex> guard(dirsAccess_);
         while (dirs_.empty()) {
             // decrement active threads counter and check if we are last, in which case terminate the execution
@@ -89,7 +112,7 @@ private:
             ++activeThreads_;
         }
         assert(dirs_.size() > 0);
-        std::string result = dirs_.front();
+        Job result = dirs_.front();
         dirs_.pop();
         return result;
     }
@@ -151,7 +174,7 @@ private:
                     // or go through the scheduling
                     } else {
                         Worker::log(this, STR("Adding job for directory " << path));
-                        addDirectoryToCrawl(path);
+                        addJob(Job(path));
                     }
                 }
             }
@@ -181,8 +204,16 @@ private:
             std::string ap = path + "/" + ent->d_name;
             std::string rp = relPath.empty() ? ent->d_name : relPath + "/" + ent->d_name;
             // check if it is directory, in which case recurse
-            if (isDirectory(ap))
-                processProjectDirectory(project, ap, rp);
+            if (isDirectory(ap)) {
+                if (queueSize() > CRAWLER_QUEUE_THRESHOLD) {
+                    Worker::log(this, STR("Queue too large, recursing into " << path));
+                    processProjectDirectory(project, ap, rp);
+                // or go through the scheduling
+                } else {
+                    Worker::log(this, STR("Adding job for directory " << path));
+                    addJob(Job(project, ap, rp));
+                }
+            }
             // if it is a file, and should be tokenized, process it
             else if (isLanguageFile(ap))
                 processFile(new TokenizedFile(project, rp));
@@ -193,14 +224,18 @@ private:
     /** Tokenizes the given file and submits it to the writer.
      */
     void processFile(TokenizedFile * f) {
-        Writer::log(this, STR("tokenizing file " << f->absPath()));
-        JSTokenizer::tokenize(f);
-        Writer::log(this, STR("submitting file " << f->absPath() << " to writers"));
-        Writer::addTokenizedFile(f);
+        try {
+            Writer::log(this, STR("tokenizing file " << f->absPath()));
+            JSTokenizer::tokenize(f);
+            Writer::log(this, STR("submitting file " << f->absPath() << " to writers"));
+            Writer::addTokenizedFile(f);
+        } catch (std::string const & e) {
+            Writer::error(e);
+        }
     }
 
     static std::mutex dirsAccess_;
-    static std::queue<std::string> dirs_;
+    static std::queue<Job> dirs_;
     static std::condition_variable dirsCV_;
 
 

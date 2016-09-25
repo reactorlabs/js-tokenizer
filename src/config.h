@@ -59,6 +59,8 @@
  */
 #define NUM_WRITERS 1
 
+#define NUM_ANALYZERS 1
+
 
 /** These are the names of output directories for different outputs. The names are identical to SourcererCC's default tokenizer.
  */
