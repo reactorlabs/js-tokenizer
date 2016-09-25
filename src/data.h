@@ -132,6 +132,7 @@ public:
           << emptyLoc_ << ","
           << totalTokens_ << ","
           << tokens_.size() << ","
+          << errors_ << ","
           << fileHash_ << ","
           << tokensHash_ << std::endl;
     }
@@ -181,6 +182,12 @@ private:
     unsigned emptyLoc_ = 0;
 
     unsigned totalTokens_ = 0;
+
+    /** These is debugging information from the tokenizer.
+
+      If the tokenizer finds non-standard situation with a file, i.e. unterminated token, or token that is not allowed to span lines to actually span multiple lines, it bumps the error number.
+     */
+    unsigned errors_ = 0;
 
     std::string tokensHash_;
     std::string fileHash_;

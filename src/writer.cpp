@@ -15,6 +15,7 @@ std::mutex Writer::processingAccess_;
 volatile unsigned long Writer::numFiles_ = 0;
 volatile unsigned long Writer::numProjects_ = 0;
 volatile unsigned long Writer::emptyFiles_ = 0;
+volatile unsigned long Writer::errorFiles_ = 0;
 volatile unsigned long Writer::tokenClones_ = 0;
 volatile unsigned long Writer::fileClones_ = 0;
 volatile unsigned long Writer::totalBytes_ = 0;

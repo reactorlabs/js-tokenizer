@@ -63,6 +63,10 @@ public:
         return totalBytes_;
     }
 
+    static unsigned long errorFiles() {
+        return errorFiles_;
+    }
+
     /** Returns the number of empty files found.
      */
     static unsigned long emptyFiles() {
@@ -122,6 +126,9 @@ private:
      */
     void processFile(TokenizedFile * f) {
         Worker::log(this, STR("processing file " << f->absPath()));
+
+        if (f->errors_ > 0)
+            ++errorFiles_;
 
         bool empty = f->tokens_.empty();
         bool hashClone = false;
@@ -198,6 +205,7 @@ private:
     static volatile unsigned long numFiles_;
     static volatile unsigned long numProjects_;
     static volatile unsigned long emptyFiles_;
+    static volatile unsigned long errorFiles_;
     static volatile unsigned long tokenClones_;
     static volatile unsigned long fileClones_;
 

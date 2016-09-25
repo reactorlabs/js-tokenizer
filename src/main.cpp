@@ -111,6 +111,9 @@ void done() {
     Worker::print(STR("Files processed:       " << Writer::processedFiles()));
     Worker::print(STR("Total size:            " << Writer::processedBytes() / 1024.0 / 1024 << "[MB]"));
     double tf = Writer::processedFiles() / 100.0;
+    Worker::print(STR("Error files:           " << Writer::errorFiles()));
+    Worker::print(STR("                       " << Writer::errorFiles() / tf << " %"));
+
     Worker::print(STR("Empty files:           " << Writer::emptyFiles() << (SOURCERERCC_IGNORE_EMPTY_FILES ? " (skipped)" : "")));
     Worker::print(STR("                       " << Writer::emptyFiles() / tf << " %"));
     Worker::print(STR("Detected token clones: " << Writer::tokenClones() << (SOURCERERCC_IGNORE_TOKENS_HASH_EQUIVALENTS ? " (skipped)" : "")));

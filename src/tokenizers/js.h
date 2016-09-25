@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "../data.h"
 
 
@@ -118,15 +120,13 @@ private:
 
     void numericLiteralExponentPart();
 
+
+    void templateLiteral();
     /** String literal only advances, it must be appended manually afterwards.
      */
     void stringLiteral();
 
     void regularExpressionLiteral();
-
-    /** This is a horrible now depreated feature in which HTML code can be embedded directly into JavaScript code.
-     */
-    void ex4();
 
     /** Parses identifier or keyword.
 
@@ -144,21 +144,25 @@ private:
 
 
 
+    void encodeUTF8(unsigned codepoint, std::string & into);
 
+    void convertUTF16le();
+    void convertUTF16be();
 
-
-#if JS_TOKENIZER_ENTIRE_FILE == 1
     void loadEntireFile();
 
     std::string data_;
     unsigned pos_;
-#endif
-
 
     TokenizedFile & f_;
 
     bool emptyLine_;
     bool commentLine_;
+
+
+
+    static std::set<std::string> jsKeywords_;
+
 
 
 
