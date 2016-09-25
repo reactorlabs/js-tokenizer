@@ -8,6 +8,7 @@
 #include <cstring>
 
 #include <iostream>
+#include <iomanip>
 
 #include "config.h"
 
@@ -27,6 +28,10 @@ public:
 
 private:
 
+    void escapeChar(char c, std::ostream &s) const {
+        s << "\\" << std::setw(2) << std::hex << (unsigned) c << std::dec;
+    }
+
     friend std::ostream & operator << (std::ostream & s, escape const & str) {
         // escape AND and OR and NOT as they cause problems to sourcererCC
         if (str.s == "AND")
@@ -36,6 +41,15 @@ private:
         else if (str.s == "NOT")
             s << "\\4eOT";
         else for (size_t i = 0, e = str.s.size(); i != e; ++i) {
+            char c = str.s[i];
+            // be conservative, escape anything different than number, or letter
+            if ((c >= '0' and c <= '9') or (c >= 'a' and c <='z') or (c >= 'A' and c <= 'Z'))
+                s << c;
+            else
+                str.escapeChar(c, s);
+/*
+
+
             unsigned char c = str.s[i];
             if ((c < ' ') or (c > '~') or c == '#' or c == '@' or c == ',' or c == ':' or c == '\\') {
                 s << '\\';
@@ -45,7 +59,7 @@ private:
                 s << (char)((x > 9) ? ('a' + x - 10) : ('0' + x));
             } else {
                 s << c;
-            }
+            } */
         }
         return s;
     }
