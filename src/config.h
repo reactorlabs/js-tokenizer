@@ -23,7 +23,7 @@
   The tokenizer determines the git origin url by reading the `.git/config` file, which has to be present.
  */
 #define PATH_INPUT(ENTRY) \
-    ENTRY("/home/peta/sourcerer/data/jakub2")
+    ENTRY("/home/peta/sourcerer/data/test")
 
 
 /** If 1, each thread will input additional information about what it is doing.

@@ -49,8 +49,10 @@ std::string JSTokenizer::substr(size_t start, size_t end) {
     } catch (...) {
         std::cout << "HERE I FAIL: " << f_.absPath() << std::endl;
         std::cout << "ouch" << std::endl;
-        system(STR("mv " << f_.absPath() << " " << "/home/peta/sourcerer/data/errors").c_str());
-        throw "continuing";
+        exit(-1);
+        //system(STR("mv " << f_.absPath() << " " << "/home/peta/sourcerer/data/errors").c_str());
+        //throw "continuing";
+
     }
     return "";
 
@@ -63,22 +65,26 @@ void JSTokenizer::updateFileHash() {
     f_.fileHash_ = md5.getHash();
 }
 
-void JSTokenizer::addToken(size_t start) {
-    //std::cout << "Token: " << substr(start, pos()) << std::endl;
-    ++f_.tokens_[substr(start, pos_)];
-    f_.tokenBytes_ += pos_ - start;
+void JSTokenizer::addToken(std::string const & s) {
+    std::cout << "Token: " << s << std::endl;
+    ++f_.tokens_[s];
+    f_.tokenBytes_ += s.size();
     ++f_.totalTokens_;
     commentLine_ = false;
 }
 
+void JSTokenizer::addToken(size_t start) {
+    addToken(substr(start, pos()));
+}
+
 void JSTokenizer::addSeparator(size_t start) {
-    //std::cout << "Separator: " << substr(start, pos()) << std::endl;
+    std::cout << "Separator: " << substr(start, pos()) << std::endl;
     f_.separatorBytes_ += pos_ - start;
     commentLine_ = false;
 }
 
 void JSTokenizer::addComment(size_t start) {
-    //std::cout << "Comment: " << substr(start, pos()) << std::endl;
+    std::cout << "Comment: " << substr(start, pos()) << std::endl;
     f_.commentBytes_ += pos_ - start;
     emptyLine_ = false;
 }
@@ -199,11 +205,13 @@ void JSTokenizer::ex4() {
     addToken(start);
 }
 
-void JSTokenizer::identifierOrKeyword() {
+bool JSTokenizer::identifierOrKeyword() {
     unsigned start = pos();
     while (isIdentifier(top()))
         pop(1);
-    addToken(start);
+    std::string s = substr(start, pos());
+    addToken(s);
+    return isKeyword(s);
 }
 
 void JSTokenizer::singleLineComment() {
@@ -440,9 +448,8 @@ void JSTokenizer::tokenize() {
                 break;
             default:
                 // identifier or keyword?
-                identifierOrKeyword();
-                expectRegExp = false;
-                continue; // i.e. expect regexp false
+                expectRegExp = identifierOrKeyword();
+                continue; // i.e. expect regexp as set above
         }
         expectRegExp = true;
     }

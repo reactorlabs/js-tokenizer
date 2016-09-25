@@ -49,6 +49,7 @@ private:
            case '\t':
            case '"':
            case '\'':
+           case '`':
            case '/':
            case '>':
            case '<':
@@ -80,6 +81,8 @@ private:
        }
     }
 
+    bool isKeyword(std::string const & s);
+
     size_t size();
 
     size_t pos();
@@ -98,7 +101,7 @@ private:
 
 
 
-
+    void addToken(std::string const & s);
     void addToken(size_t start);
     void addSeparator(size_t start);
     void addComment(size_t start);
@@ -125,7 +128,11 @@ private:
      */
     void ex4();
 
-    void identifierOrKeyword();
+    /** Parses identifier or keyword.
+
+      Returns true if the parsed text was keyword.
+     */
+    bool identifierOrKeyword();
 
     void singleLineComment();
 
