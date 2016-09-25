@@ -80,11 +80,11 @@ void initializeCrawlers() {
  */
 std::string time(double sec) {
     unsigned s = static_cast<unsigned>(sec);
-    s = s % 60;
     unsigned m = s / 60;
-    m = m % 60;
     unsigned h = m / 60;
-    return STR(h << ":" << std::setfill('0') << std::setw(2) << m << ":" << s);
+    s = s % 60;
+    m = m % 60;
+    return STR(h << ":" << std::setfill('0') << std::setw(2) << m << ":"  << std::setfill('0') << std::setw(2)<< s);
 }
 
 void report() {
