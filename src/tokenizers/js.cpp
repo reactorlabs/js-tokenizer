@@ -133,7 +133,11 @@ void JSTokenizer::updateFileHash() {
 }
 
 void JSTokenizer::addToken(std::string const & s) {
-    //std::cout << "Token: " << s << std::endl;
+/*    if (s.size() > 1000) {
+        std::cout << "Token: " << s << std::endl;
+        std::cout << f_.absPath() << std::endl;
+        //exit(1);
+    } */
     ++f_.tokens_[s];
     f_.tokenBytes_ += s.size();
     ++f_.totalTokens_;
@@ -247,6 +251,7 @@ void JSTokenizer::stringLiteral() {
             pop(1);
             if (top() == '\n') {
                 newline();
+                pop(1);
                 continue;
             }
         }

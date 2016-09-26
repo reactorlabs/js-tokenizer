@@ -9,8 +9,14 @@
 #include "data.h"
 #include "worker.h"
 
-class Analyzer : public Worker {
 
+/** The job of analyzer is to perform some analysis & conversion on the acquired data.
+ */
+class Analyzer : public Worker {
+public:
+    void addFile(TokenizedFile* f) {
+
+    }
 
 
 

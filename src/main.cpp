@@ -47,6 +47,7 @@ void initializeWriters() {
     createDirectory(STR(PATH_OUTPUT << "/" << PATH_TOKENS_FILE));
     createDirectory(STR(PATH_OUTPUT << "/" << PATH_BOOKKEEPING_PROJS));
     createDirectory(STR(PATH_OUTPUT << "/" << PATH_OUR_DATA_FILE));
+    createDirectory(STR(PATH_OUTPUT << "/" << PATH_CLONE_FILE));
     // launch writer threads
     for (size_t i = 0; i < NUM_WRITERS; ++i) {
         std::thread t([i] () {
@@ -118,8 +119,6 @@ void done() {
     Worker::print(STR("                       " << Writer::emptyFiles() / tf << " %"));
     Worker::print(STR("Detected token clones: " << Writer::tokenClones() << (SOURCERERCC_IGNORE_TOKENS_HASH_EQUIVALENTS ? " (skipped)" : "")));
     Worker::print(STR("                       " << Writer::tokenClones() / tf << " %"));
-    Worker::print(STR("Detected file clones:  " << Writer::fileClones() << (SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS ? " (skipped)" : "")));
-    Worker::print(STR("                       " << Writer::fileClones() / tf << " %"));
 }
 
 

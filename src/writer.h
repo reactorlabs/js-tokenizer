@@ -23,8 +23,9 @@ public:
         bookkeeping(STR(PATH_OUTPUT << "/" << PATH_BOOKKEEPING_PROJS << "/bookkeeping-proj-" << index << ".txt")),
         stats(STR(PATH_OUTPUT << "/" << PATH_STATS_FILE << "/files-stats-" << index << ".txt")),
         tokens(STR(PATH_OUTPUT << "/" << PATH_TOKENS_FILE << "/files-tokens-" << index << ".txt")),
-        ourdata(STR(PATH_OUTPUT << "/" << PATH_OUR_DATA_FILE << "/files-" << index << ".txt")) {
-        if (not bookkeeping.good() or not stats.good() or not tokens.good() or not ourdata.good())
+        ourdata(STR(PATH_OUTPUT << "/" << PATH_OUR_DATA_FILE << "/files-" << index << ".txt")),
+        clones(STR(PATH_OUTPUT << "/" << PATH_CLONE_FILE << "/clones-" << index << ".txt")){
+        if (not bookkeeping.good() or not stats.good() or not tokens.good() or not ourdata.good() or not clones.good())
             throw STR("Unable to create sourcererCC output files for writer " << index);
     }
 
@@ -79,12 +80,6 @@ public:
         return tokenClones_;
     }
 
-    /** Returns the number of file clones found (i.e. files that have same file hashes).
-     */
-    static unsigned long fileClones() {
-        return fileClones_;
-    }
-
     /** Returns the number of items in the writer's queue.
      */
     static unsigned queueSize() {
@@ -94,6 +89,31 @@ public:
 
 private:
     friend class Crawler;
+
+    struct Record {
+        unsigned count;
+        unsigned pid;
+        unsigned fid;
+
+        Record():
+            count(0),
+            pid(0),
+            fid(0) {
+        }
+
+        bool increment(unsigned pid, unsigned fid) {
+            if (count == 0) {
+                this->pid = pid;
+                this->fid = fid;
+                count = 1;
+                return false;
+            } else {
+                ++count;
+                return true;
+            }
+        }
+    };
+
 
     void enterProcessing() {
 #if NUM_WRITERS > 1
@@ -132,7 +152,9 @@ private:
 
         bool empty = f->tokens_.empty();
         bool hashClone = false;
-        bool fileClone = false;
+
+        unsigned clonePid = 0;
+        unsigned cloneFid = 0;
 
         // enter the processing mode in multi-writer mode
         enterProcessing();
@@ -145,14 +167,13 @@ private:
         totalBytes_ += f->bytes_;
 
 #if SOURCERERCC_IGNORE_TOKENS_HASH_EQUIVALENTS == 1
-        hashClone = tokenHashMatches_[f->tokensHash_]++;
-        if (hashClone)
+        auto & i = tokenHashMatches_[f->tokensHash_]  ;
+        hashClone = i.increment(f->project_->id_, f->id_);
+        if (hashClone) {
             ++tokenClones_;
-#endif
-#if SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS == 1
-        fileClone = fileHashMatches_[f->fileHash_] ++;
-        if (fileClone)
-            ++fileClones_;
+            clonePid = i.pid;
+            cloneFid = i.fid;
+        }
 #endif
         if (empty)
             ++emptyFiles_;
@@ -162,14 +183,18 @@ private:
         // output file tokens and statistics
 
         if (not ((SOURCERERCC_IGNORE_EMPTY_FILES and empty) or
-                 (SOURCERERCC_IGNORE_TOKENS_HASH_EQUIVALENTS and hashClone) or
-                 (SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS) and fileClone)) {
+                 (SOURCERERCC_IGNORE_TOKENS_HASH_EQUIVALENTS and hashClone))) {
             f->sourcererCCFileStats(stats);
             f->sourcererCCFileTokens(tokens);
         }
 
         // our data is always printed
         f->ourData(ourdata);
+
+        // output clone information, if we have determined it is a clone
+        if (hashClone)
+            clones << clonePid << "," << cloneFid << "," << f->project_->id_ << "," << f->id_ << std::endl;
+
 
         // and finally, delete the file, if it is the last file in the project, deletes the project as well
         delete f;
@@ -186,6 +211,7 @@ private:
     std::ofstream stats;
     std::ofstream tokens;
     std::ofstream ourdata;
+    std::ofstream clones;
 
 
     static std::mutex queueAccess_;
@@ -198,8 +224,7 @@ private:
 #endif
 
     // hashmaps for checking whether file is exact hash or not
-    static std::map<std::string, unsigned> tokenHashMatches_;
-    static std::map<std::string, unsigned> fileHashMatches_;
+    static std::map<std::string, Record> tokenHashMatches_;
 
 
     static volatile unsigned long numFiles_;
@@ -207,7 +232,6 @@ private:
     static volatile unsigned long emptyFiles_;
     static volatile unsigned long errorFiles_;
     static volatile unsigned long tokenClones_;
-    static volatile unsigned long fileClones_;
 
     static volatile unsigned long totalBytes_;
 

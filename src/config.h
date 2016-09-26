@@ -72,6 +72,8 @@
  */
 #define PATH_OUR_DATA_FILE "our_data"
 
+#define PATH_CLONE_FILE "clones"
+
 
 /** This ignores crawling the `.git` folder in git projects. I think there should be no reason to turn this off.
  */
@@ -82,10 +84,6 @@
 #define SOURCERERCC_IGNORE_EMPTY_FILES 1
 
 /** When 1, does not output entire file hash equivalent files to sourcererCC, outputs only the first one.
-
-  Note that if two files are hash-equivalent, they must be also tokens-hash equivalent.
- */
-#define SOURCERERCC_IGNORE_FILE_HASH_EQUIVALENTS 1
 
 /** When 1, does not output tokens hash equivalent files to sourcererCC, outputs only the first one.
  */
