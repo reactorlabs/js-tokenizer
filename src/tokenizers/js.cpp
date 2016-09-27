@@ -3,7 +3,7 @@
 #include "../hashes/md5.h"
 #include "js.h"
 
-#include "../worker.h"
+#include "../old/worker.h"
 
 namespace {
 

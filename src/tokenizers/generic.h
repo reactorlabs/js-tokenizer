@@ -7,9 +7,9 @@
 
 #include "../hashes/md5.h"
 
-#include "../utils.h"
+#include "../old/utils.h"
 
-#include "../data.h"
+#include "../old/data.h"
 
 
 class Tokenizer {
