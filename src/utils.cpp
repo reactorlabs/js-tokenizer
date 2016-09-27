@@ -48,13 +48,14 @@ std::string unescapePath(std::string const & from) {
             result += from[i];
             ++i;
         } else {
-            result += (char) (fromHexDigit(result[i+1]) * 16 + fromHexDigit(result[i+2]));
+            result += (char) (fromHexDigit(from[i+1]) * 16 + fromHexDigit(from[i+2]));
             i += 3;
         }
     }
     return result;
 }
 
+#include <iostream>
 
 std::string loadEntireFile(std::string const & filename) {
     std::ifstream s(filename, std::ios::in | std::ios::binary);

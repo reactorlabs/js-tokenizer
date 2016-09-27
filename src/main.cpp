@@ -8,9 +8,9 @@
 
 int main(int argc, char * argv[]) {
     try {
-        FileStatistic::parseFile("/home/peta/delete/files-0.txt");
+        FileStatistic::parseFile("/home/peta/sourcerer/processedV4/our_data/files-0.txt");
         std::cout << "Parsed " << FileStatistic::numFiles() << " files" << std::endl;
-        CloneInfo::parseFile("/home/peta/delete/clones-0.txt");
+        CloneInfo::parseFile("/home/peta/sourcerer/processedV4/clones/clones-0.txt");
         std::cout << "Parsed " << CloneInfo::numClones()<< " clone records" << std::endl;
 
         auto x = Validator::validateExactClones();
