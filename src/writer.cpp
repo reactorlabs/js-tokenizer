@@ -58,7 +58,7 @@ void Writer::process(WriterJob const & job) {
             job.file->stats.writeSourcererStats(files_);
             job.file->writeTokens(tokens_);
         } else {
-            CloneInfo ci(job.clonePid, job.cloneFid, job.file->pid(), job.file->id());
+            CloneInfo ci(job.originalPid, job.originalFid, job.file->pid(), job.file->id());
             ci.writeTo(clones_);
         }
     }

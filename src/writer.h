@@ -7,13 +7,13 @@
 struct WriterJob {
     TokenizedFile * file;
 
-    unsigned clonePid;
-    unsigned cloneFid;
+    unsigned originalPid;
+    unsigned originalFid;
 
     bool writeProject;
 
     bool isClone() const {
-        return clonePid != 0 and cloneFid != 0;
+        return originalPid != 0 and originalFid != 0;
     }
 
     static_assert(FILE_ID_STARTS_AT > 0, "0 means not initialized");
@@ -21,8 +21,15 @@ struct WriterJob {
 
     WriterJob(TokenizedFile * file, bool writeProject = false):
         file(file),
-        clonePid(0),
-        cloneFid(0),
+        originalPid(0),
+        originalFid(0),
+        writeProject(writeProject) {
+    }
+
+    WriterJob(TokenizedFile * file, bool writeProject, unsigned pid, unsigned fid):
+        file(file),
+        originalPid(pid),
+        originalFid(fid),
         writeProject(writeProject) {
     }
 

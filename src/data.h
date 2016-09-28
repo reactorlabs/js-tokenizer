@@ -107,6 +107,14 @@ public:
         return freqs_.end();
     }
 
+    void add(std::string const & token) {
+        ++freqs_[token];
+    }
+
+    void add(std::string const & token, unsigned freq) {
+        freqs_[token] += freq;
+    }
+
     /** Outputs the tokens and their frequencies in the sourcererCC's format.
      */
     void writeSourcererFormat(std::ostream & s);
@@ -115,9 +123,6 @@ public:
 private:
     friend class TokenizedFile;
 
-    void add(std::string const & token) {
-        ++freqs_[token];
-    }
 
     std::string calculateHash();
 
@@ -149,6 +154,10 @@ public:
 
     std::string const & fileHash() const {
         return fileHash_;
+    }
+
+    std::string const & tokensHash() const {
+        return tokensHash_;
     }
 
     /** Writes the file statistics into given stream.
@@ -216,6 +225,10 @@ public:
         ++stats.uniqueTokens_;
         stats.tokenBytes_ += token.size();
         tokens.add(token);
+    }
+
+    void updateTokenMap(TokenMap && map) {
+        tokens.freqs_ = std::move(map.freqs_);
     }
 
     void addSeparator(size_t size) {

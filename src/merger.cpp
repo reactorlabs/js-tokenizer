@@ -1,10 +1,25 @@
 #include <thread>
-
+#include <iomanip>
 #include "merger.h"
 #include "writer.h"
 
-std::atomic_uint Merger::fid_(FILE_ID_STARTS_AT);
-std::atomic_uint Merger::pid_(PROJECT_ID_STARTS_AT);
+unsigned Merger::fid_ = FILE_ID_STARTS_AT;
+unsigned Merger::pid_ = PROJECT_ID_STARTS_AT;
+
+Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
+std::map<std::string, Merger::CloneInfo> Merger::clones_;
+
+std::map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
+
+unsigned Merger::numClones_ = 0;
+
+
+Merger::TokenInfo::TokenInfo(unsigned id):
+    id(STR(std::hex << id)),
+    count(0) {
+}
+
+
 
 
 void Merger::initializeWorkers(unsigned num) {
@@ -17,8 +32,32 @@ void Merger::initializeWorkers(unsigned num) {
     }
 }
 
+Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
+    if (stopClones_ == StopClones::none)
+        return CloneInfo();
+    std::string const & hash = stopClones_ == StopClones::file ? tf->stats.fileHash() : tf->stats.tokensHash();
+    auto i = clones_.find(hash);
+    if (i == clones_.end()) {
+        clones_[hash] = CloneInfo(tf->pid(), tf->id());
+        return CloneInfo();
+    } else {
+        ++numClones_;
+        Writer::Log("clone");
+        return i->second;
+    }
+}
 
-
+void Merger::idsForTokens(TokenizedFile * tf) {
+    TokenMap tm;
+    for (auto i : tf->tokens) {
+        auto j = uniqueTokenIds_.find(i.first);
+        if (j == uniqueTokenIds_.end())
+            j = uniqueTokenIds_.insert(std::pair<std::string, TokenInfo>(i.first, TokenInfo(uniqueTokenIds_.size()))).first;
+        ++(j->second);
+        tm.add(j->second.id, i.second);
+    }
+    tf->updateTokenMap(std::move(tm));
+}
 
 void Merger::process(MergerJob const & job) {
     bool writeProject = false;
@@ -28,5 +67,10 @@ void Merger::process(MergerJob const & job) {
         tf->setPid(pid_++);
         writeProject = true;
     }
-    Writer::Schedule(WriterJob(job.file, writeProject));
+
+    CloneInfo ci = checkClones(tf);
+
+    idsForTokens(tf);
+
+    Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
 }
