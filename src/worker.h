@@ -47,19 +47,23 @@ public:
     static void Warning(std::string const & msg);
     static void Print(std::string const & msg);
     static void Log(std::string const & msg);
+
+    static std::string currentName() {
+        if (worker_ == nullptr)
+            return "";
+        else
+            return worker_->name_;
+    }
+
 protected:
     /** Each worker must have a name.
      */
     Worker(std::string const & name):
         name_(name) {
+        if (worker_ != nullptr)
+            throw STR("Worker " << worker_->name_ << " already running in thread attempting to create worker " << name);
+        worker_ = this;
     }
-
-    /* Locked output routines for different kinds of messages when the worker thread's name is known.
-     */
-    void error(std::string const & msg);
-    void warning(std::string const & msg);
-    void print(std::string const & msg);
-    void log(std::string const & msg);
 
 protected:
     /** True if current job raised an error
@@ -69,6 +73,7 @@ protected:
 private:
     std::string name_;
 
+    static thread_local Worker * worker_;
 
     static std::mutex m_;
 
@@ -136,13 +141,13 @@ private:
         try {
             process(job);
         } catch (std::string const & e) {
-            error(STR(e << " while doing job " << job));
+            Worker::Error(STR(e << " while doing job " << job));
             error_ = true;
         } catch (std::exception const & e) {
-            error(STR(e.what() << "while doing job " << job));
+            Worker::Error(STR(e.what() << "while doing job " << job));
             error_ = true;
         } catch (...) {
-            error(STR("Unknown exception while doing job " << job));
+            Worker::Error(STR("Unknown exception while doing job " << job));
             error_ = true;
         }
         ++jobsDone_;
@@ -168,7 +173,6 @@ private:
         jobs_.pop();
         return result;
     }
-
 
     static unsigned activeThreads_;
     static unsigned jobsDone_;
