@@ -13,15 +13,6 @@ std::map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
 
 unsigned Merger::numClones_ = 0;
 
-
-Merger::TokenInfo::TokenInfo(unsigned id):
-    id(STR(std::hex << id)),
-    count(0) {
-}
-
-
-
-
 void Merger::initializeWorkers(unsigned num) {
     for (unsigned i = 0; i < num; ++i) {
         std::thread t([i] () {
@@ -29,6 +20,14 @@ void Merger::initializeWorkers(unsigned num) {
             c();
         });
         t.detach();
+    }
+}
+
+void Merger::writeGlobalTokens(std::ostream & s) {
+    for (auto i : uniqueTokenIds_) {
+        s << i.second.id << ","
+          << i.second.count << ","
+          << escapeToken(i.first) << std::endl;
     }
 }
 
@@ -54,7 +53,7 @@ void Merger::idsForTokens(TokenizedFile * tf) {
         if (j == uniqueTokenIds_.end())
             j = uniqueTokenIds_.insert(std::pair<std::string, TokenInfo>(i.first, TokenInfo(uniqueTokenIds_.size()))).first;
         ++(j->second);
-        tm.add(j->second.id, i.second);
+        tm.add(STR(std::hex << j->second.id), i.second);
     }
     tf->updateTokenMap(std::move(tm));
 }

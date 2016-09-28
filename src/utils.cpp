@@ -22,6 +22,21 @@ void escape(char c, std::string & into) {
     into += toHexDigit(lo);
 }
 
+
+std::string escapeToken(std::string const & token) {
+    std::string result;
+    result.reserve(token.size());
+    for (char c : token) {
+        if ((c >= '0' and c <= '9') or (c >= 'a' and c <= 'z') or ( c >= 'A' and c <= 'Z'))
+            result += c;
+        else
+            escape(c, result);
+    }
+    return result;
+
+}
+
+
 std::string escapePath(std::string const & from) {
     std::string result;
     result.reserve(from.size());
@@ -39,7 +54,6 @@ std::string escapePath(std::string const & from) {
         }
     }
     return result;
-
 }
 
 std::string unescapePath(std::string const & from) {

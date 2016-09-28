@@ -15,6 +15,8 @@ unsigned fromHexDigit(char from);
 
 void escape(char c, std::string & into);
 
+std::string escapeToken(std::string const & token);
+
 std::string escapePath(std::string const & from);
 
 std::string unescapePath(std::string const & from);

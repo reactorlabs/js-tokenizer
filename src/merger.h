@@ -33,6 +33,8 @@ public:
 
     static void initializeWorkers(unsigned num);
 
+    static void writeGlobalTokens(std::ostream & s);
+
 private:
 
     struct CloneInfo {
@@ -50,15 +52,19 @@ private:
     };
 
     struct TokenInfo {
-        std::string id;
+        unsigned id;
         unsigned count;
 
-        TokenInfo(unsigned id);
+        TokenInfo(unsigned id):
+            id(id),
+            count(0) {
+        }
 
         TokenInfo & operator ++ () {
             ++count;
             return *this;
         }
+
     };
 
     CloneInfo checkClones(TokenizedFile * tf);

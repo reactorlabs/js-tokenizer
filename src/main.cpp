@@ -29,6 +29,8 @@ void tokenize(int argc, char * argv[]) {
             break;
     }
     Worker::Log("ALL DONE");
+    std::ofstream tokens("processed/tokens.txt");
+    Merger::writeGlobalTokens(tokens);
 }
 
 
