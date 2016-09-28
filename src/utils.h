@@ -26,3 +26,7 @@ std::string loadEntireFile(std::string const & filename);
 
 
 std::vector<std::string> split(std::string const & what, char delimiter);
+
+bool isDirectory(std::string const & path);
+
+void createDirectory(std::string const & path);

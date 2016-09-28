@@ -2,7 +2,7 @@
 
 #include <set>
 
-#include "../old/data.h"
+#include "../data.h"
 
 
 
@@ -13,7 +13,7 @@ public:
     static void tokenize(TokenizedFile * f) {
         JSTokenizer t(f);
         t.tokenize();
-        t.updateFileHash();
+        f->updateFileStats(t.data_);
         f->calculateTokensHash();
     }
 

@@ -1,3 +1,4 @@
+#ifdef HAHA
 #include "writer.h"
 
 
@@ -18,3 +19,4 @@ volatile unsigned long Writer::errorFiles_ = 0;
 volatile unsigned long Writer::tokenClones_ = 0;
 volatile unsigned long Writer::totalBytes_ = 0;
 
+#endif

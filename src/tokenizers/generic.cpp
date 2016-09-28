@@ -1,3 +1,4 @@
+#ifdef HAHA
 #include "../old/worker.h"
 #include "generic.h"
 
@@ -261,3 +262,5 @@ void Tokenizer::addToken(std::string const & token) {
         commentLine_ = false;
     }
 }
+
+#endif

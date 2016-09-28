@@ -1,9 +1,8 @@
 #include <fstream>
 
-#include "../hashes/md5.h"
 #include "js.h"
 
-#include "../old/worker.h"
+#include "../worker.h"
 
 namespace {
 
@@ -126,21 +125,13 @@ std::string JSTokenizer::substr(size_t start, size_t end) {
     return "";
 }
 
-void JSTokenizer::updateFileHash() {
-    MD5 md5;
-    md5.add(data_.c_str(), data_.size());
-    f_.fileHash_ = md5.getHash();
-}
-
 void JSTokenizer::addToken(std::string const & s) {
 /*    if (s.size() > 1000) {
         std::cout << "Token: " << s << std::endl;
         std::cout << f_.absPath() << std::endl;
         //exit(1);
     } */
-    ++f_.tokens_[s];
-    f_.tokenBytes_ += s.size();
-    ++f_.totalTokens_;
+    f_.addToken(s);
     commentLine_ = false;
 }
 
@@ -150,30 +141,24 @@ void JSTokenizer::addToken(size_t start) {
 
 void JSTokenizer::addSeparator(size_t start) {
     //std::cout << "Separator: " << substr(start, pos()) << std::endl;
-    f_.separatorBytes_ += pos_ - start;
+    f_.addSeparator(pos_ - start);
     commentLine_ = false;
 }
 
 void JSTokenizer::addComment(size_t start) {
     //std::cout << "Comment: " << substr(start, pos()) << std::endl;
-    f_.commentBytes_ += pos_ - start;
+    f_.addComment(pos_ - start);
     emptyLine_ = false;
 }
 
 void JSTokenizer::addWhitespace(size_t start) {
     //std::cout << "Whitespace: " << substr(start, pos()) << std::endl;
-    f_.whitespaceBytes_ += pos_ - start;
+    f_.addWhitespace(pos_ - start);
 }
 
 
 void JSTokenizer::newline() {
-    ++f_.loc_;
-    if (commentLine_ == true) {
-        if (emptyLine_ == true)
-            ++f_.emptyLoc_;
-        else
-            ++f_.commentLoc_;
-   }
+    f_.newline(commentLine_, emptyLine_);
     commentLine_ = true;
     emptyLine_ = true;
 }
@@ -235,8 +220,8 @@ void JSTokenizer::templateLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Worker::log(STR(f_.absPath() << ": Unterminated template literal"));
-        ++f_.errors_;
+        Worker::Log("Unterminated template literal");
+        f_.tokenizationError();
     }
     addToken(start);
 }
@@ -256,8 +241,8 @@ void JSTokenizer::stringLiteral() {
             }
         }
         if (top() == '\n') {
-            Worker::log(STR(f_.absPath() << ": Multiple lines in string literal"));
-            ++f_.errors_;
+            Worker::Log("Multiple lines in string literal");
+            f_.tokenizationError();
             addToken(start);
             return;
         }
@@ -266,8 +251,8 @@ void JSTokenizer::stringLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Worker::log(STR(f_.absPath() << ": Unterminated string literal"));
-        ++f_.errors_;
+        Worker::Log("Unterminated string literal");
+        f_.tokenizationError();
     }
     addToken(start);
 }
@@ -285,8 +270,8 @@ void JSTokenizer::regularExpressionLiteral() {
         if (top() == '\\') // any escape will do
             pop(1);
         if (top() == '\n') {
-            Worker::log(STR(f_.absPath() << ": Multiple lines in regular expression literal"));
-            ++f_.errors_;
+            Worker::Log("Multiple lines in regular expression literal");
+            f_.tokenizationError();
             addToken(start);
             return;
         }
@@ -296,8 +281,8 @@ void JSTokenizer::regularExpressionLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Worker::log(STR(f_.absPath() << ": Unterminated regular expression literal"));
-        ++f_.errors_;
+        Worker::Log("Unterminated regular expression literal");
+        f_.tokenizationError();
     }
     // now parse the flags, as if identifier
     while (isIdentifier(top()))
@@ -344,8 +329,8 @@ void JSTokenizer::multiLineComment() {
         }
     }
     if (eof()) {
-        Worker::log(STR(f_.absPath() << ": Unterminated multi-line comment"));
-        ++f_.errors_;
+        Worker::Log("Unterminated multi-line comment");
+        f_.tokenizationError();
     }
     addComment(start);
 }
@@ -592,8 +577,10 @@ void JSTokenizer::encodeUTF8(unsigned codepoint, std::string & into) {
         into += static_cast<char>(0x80 + ((codepoint >> 6) & 0x3f));
         into += static_cast<char>(0x80 + (codepoint & 0x3f));
     } else {
-        if (codepoint >= 0x80000000)
-            ++f_.errors_;
+        if (codepoint >= 0x80000000) {
+            Worker::Log(STR("Unknown unicode character " << codepoint));
+            f_.tokenizationError();
+        }
         into += static_cast<char>(0xfc + (codepoint >> 30));
         into += static_cast<char>(0x80 + ((codepoint >> 24) & 0x3f));
         into += static_cast<char>(0x80 + ((codepoint >> 18) & 0x3f));
@@ -607,7 +594,7 @@ void JSTokenizer::encodeUTF8(unsigned codepoint, std::string & into) {
 
 
 void JSTokenizer::convertUTF16be() {
-    Worker::log(STR(f_.absPath() << ": Converting from UTF16be"));
+    Worker::Log("Converting from UTF16be");
     std::string result;
     result.reserve(data_.size());
     size_t i = 2, e = data_.size();
@@ -630,7 +617,7 @@ void JSTokenizer::convertUTF16be() {
 
 
 void JSTokenizer::convertUTF16le() {
-    Worker::log(STR(f_.absPath() << ": Converting from UTF16le"));
+    Worker::Log("Converting from UTF16le");
     std::string result;
     result.reserve(data_.size());
     size_t i = 2, e = data_.size();
@@ -649,9 +636,6 @@ void JSTokenizer::convertUTF16le() {
     }
     data_ = std::move(result);
 }
-
-
-
 
 void JSTokenizer::loadEntireFile() {
     std::ifstream s(f_.absPath(), std::ios::in | std::ios::binary);
@@ -674,5 +658,4 @@ void JSTokenizer::loadEntireFile() {
     // UTF-8, skip if present
     if (data_.size() >= 3 and data_[0] == (char)0xef and data_[1] == (char) 0xbb and data_[2] == (char) 0xbf)
             pos_ = 3;
-    f_.bytes_ = data_.size();
 }

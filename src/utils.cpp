@@ -1,3 +1,6 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+
 #include <fstream>
 
 #include "utils.h"
@@ -48,7 +51,7 @@ std::string unescapePath(std::string const & from) {
             result += from[i];
             ++i;
         } else {
-            result += (char) (fromHexDigit(result[i+1]) * 16 + fromHexDigit(result[i+2]));
+            result += (char) (fromHexDigit(from[i+1]) * 16 + fromHexDigit(from[i+2]));
             i += 3;
         }
     }
@@ -81,3 +84,25 @@ std::vector<std::string> split(std::string const & what, char delimiter) {
     }
     return result;
 }
+
+
+
+
+
+
+bool isDirectory(std::string const & path) {
+    struct stat s;
+    if (lstat(path.c_str(),&s) == 0 ) {
+        if( s.st_mode & S_IFDIR )
+            return true;
+    }
+    return false;
+}
+
+void createDirectory(std::string const & path) {
+    if (system(STR("mkdir -p " << path).c_str()) != EXIT_SUCCESS)
+        throw STR("Unable to create directory " << path);
+}
+
+
+

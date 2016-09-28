@@ -12,8 +12,9 @@ public:
         unsigned errors = 0;
         for (size_t i = 0, e = CloneInfo::numClones(); i != e; ++i) {
             CloneInfo * ci = CloneInfo::get(i);
-            FileStatistic * first = FileStatistic::get(ci->fid1());
-            FileStatistic * second = FileStatistic::get(ci->fid2());
+            FileStats * first = FileStats::get(ci->fid1());
+            FileStats * second = FileStats::get(ci->fid2());
+            // todo this is bruteforce validation, we can hash files already seen, etc.
             if (first->fileHash() == second->fileHash()) {
                 ++num;
                 if (loadEntireFile(first->absPath()) != loadEntireFile(second->absPath()))
