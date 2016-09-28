@@ -53,12 +53,14 @@ void Writer::process(WriterJob const & job) {
     // always output full stats
     job.file->stats.writeFullStats(fullStats_);
     // if not empty and not clone, output sourcererCC's info
-    if (not job.file->empty() and not job.isClone()) {
-        job.file->stats.writeSourcererStats(files_);
-        job.file->writeTokens(tokens_);
-    } else {
-        CloneInfo ci(job.clonePid, job.cloneFid, job.file->pid(), job.file->id());
-        ci.writeTo(clones_);
+    if (not job.file->empty()) {
+        if (not job.isClone()) {
+            job.file->stats.writeSourcererStats(files_);
+            job.file->writeTokens(tokens_);
+        } else {
+            CloneInfo ci(job.clonePid, job.cloneFid, job.file->pid(), job.file->id());
+            ci.writeTo(clones_);
+        }
     }
     // finally check if the project should be written as well
     if (job.writeProject)
