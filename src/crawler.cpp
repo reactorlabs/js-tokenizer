@@ -1,14 +1,28 @@
 #include <dirent.h>
 #include <cstring>
 #include <fstream>
+#include <thread>
 
 #include "crawler.h"
+#include "tokenizer.h"
+
+
+void Crawler::initializeWorkers(unsigned num) {
+    for (unsigned i = 0; i < num; ++i) {
+        std::thread t([i] () {
+            Crawler c(i);
+            c();
+        });
+        t.detach();
+    }
+}
+
 
 void Crawler::process(CrawlerJob const & job) {
     std::string url = projectUrl(job.path);
     // if the directory is not empty, create job for the tokenizer
     if (not url.empty()) {
-        throw "NOT_IMPLEMENTED";
+        Tokenizer::Schedule(TokenizerJob(job.path, url));
     // otherwise recursively scan all its subdirectories
     } else {
         struct dirent * ent;
@@ -22,7 +36,7 @@ void Crawler::process(CrawlerJob const & job) {
             if (strcmp(ent->d_name, ".") == 0 or strcmp(ent->d_name, "..") == 0)
                 continue;
             // skip .git as we do not crawl it
-            if (strcmp(ent->d_name, ".git"))
+            if (strcmp(ent->d_name, ".git") == 0)
                 continue;
             // crawl the directory recursively
             schedule(CrawlerJob(job.path + "/" + ent->d_name));

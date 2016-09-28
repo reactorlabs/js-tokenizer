@@ -1,3 +1,4 @@
+#pragma once
 #include "data.h"
 #include "worker.h"
 
@@ -6,6 +7,7 @@ struct TokenizerJob {
     std::string relPath;
 
     TokenizerJob(std::string const & path, std::string const & url):
+        project(new GitProject(path, url)),
         relPath("") {
     }
 
@@ -31,6 +33,9 @@ public:
     Tokenizer(unsigned index):
         QueueWorker<TokenizerJob>(STR("TOKENIZER " << index)) {
     }
+
+    static void initializeWorkers(unsigned num);
+
 
 protected:
 

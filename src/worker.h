@@ -1,3 +1,4 @@
+#pragma once
 #include <mutex>
 #include <condition_variable>
 #include <queue>
@@ -85,7 +86,7 @@ public:
     /** Run method of the thread.
      */
     void operator () () {
-        log("Started...");
+        Worker::Log("Started...");
         // bump up the number of active threads
         m_.lock();
         ++activeThreads_;
@@ -129,6 +130,7 @@ private:
       Calls the process() method, manages the error countres & state and checks for any errors the processing might throw so that the thread won't die.
      */
     void processAndCheck(JOB const & job) {
+        Worker::Log(STR(job));
         bool oldError = error_;
         error_ = false;
         try {

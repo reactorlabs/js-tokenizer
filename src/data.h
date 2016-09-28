@@ -27,6 +27,16 @@ public:
         return githubUrl_;
     }
 
+    GitProject():
+        id_(0) {
+    }
+
+    GitProject(std::string const & path, std::string const & url):
+        id_(0),
+        path_(path),
+        url_(url) {
+    }
+
 private:
     friend class FileStats;
     friend class TokenizedFile;

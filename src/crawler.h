@@ -1,3 +1,4 @@
+#pragma once
 #include "worker.h"
 
 
@@ -19,6 +20,8 @@ public:
     Crawler(unsigned index):
         QueueWorker<CrawlerJob>(STR("CRAWLER " << index)) {
     }
+
+    static void initializeWorkers(unsigned num);
 
 private:
     /** Checks whether a directory is git project, rercusively.

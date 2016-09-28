@@ -3,19 +3,36 @@
 
 #include "data.h"
 #include "validator.h"
+#include "crawler.h"
+#include "tokenizer.h"
+
+
+void tokenize(int argc, char * argv[]) {
+    Crawler::Schedule(CrawlerJob("/home/peta/sourcerer/data"));
+
+    Crawler::initializeWorkers(1);
+    Tokenizer::initializeWorkers(1);
+//    Writer::initializeWorkers(1);
+
+    while (true) {
+
+    }
+}
+
 
 
 
 int main(int argc, char * argv[]) {
     try {
-        FileStats::parseFile("/home/peta/delete/files-0.txt");
+        tokenize(argc, argv);
+/*        FileStats::parseFile("/home/peta/delete/files-0.txt");
         std::cout << "Parsed " << FileStats::numFiles() << " files" << std::endl;
 
         CloneInfo::parseFile("/home/peta/delete/clones-0.txt");
         std::cout << "Parsed " << CloneInfo::numClones()<< " clone records" << std::endl;
 
         CloneGroup::find();
-        std::cout << "Found " << CloneGroup::numGroups()<< " clone groups" << std::endl;
+        std::cout << "Found " << CloneGroup::numGroups()<< " clone groups" << std::endl; */
 
 //        auto x = Validator::validateExactClones();
 //        std::cout << x.first / (double) CloneInfo::numClones() * 100 << std::endl;
