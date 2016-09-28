@@ -239,6 +239,8 @@ void JSTokenizer::stringLiteral() {
                 pop(1);
                 continue;
             }
+            if (eof())
+                break;
         }
         if (top() == '\n') {
             Worker::Log("Multiple lines in string literal");
