@@ -3,6 +3,7 @@
 #include <thread>
 
 #include "tokenizer.h"
+#include "merger.h"
 
 #include "tokenizers/js.h"
 
@@ -50,7 +51,8 @@ void Tokenizer::process(TokenizerJob const & job) {
         }
     }
     closedir(d);
-    // TODO deal with project bookkeeping as well
+    // project bookkeeping, so that floating projects are deleted when all their files are written and they are no longer needed
+    --job.project->handles_;
 }
 
 void Tokenizer::tokenize(GitProject * project, std::string const & relPath) {
@@ -58,4 +60,6 @@ void Tokenizer::tokenize(GitProject * project, std::string const & relPath) {
     TokenizedFile * tf = new TokenizedFile(project, relPath);
     Worker::Log(STR("tokenizing " << tf->absPath()));
     JSTokenizer::tokenize(tf);
+
+    Merger::Schedule(MergerJob(tf));
 }

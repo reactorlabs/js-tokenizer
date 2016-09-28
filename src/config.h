@@ -5,10 +5,6 @@
  */
 #define NUM_CORES 4
 
-
-#define FILE_ID_STARTS_AT 1
-#define PROJECT_ID_STARTS_AT 1
-
 /** Default output path.
  */
 #define PATH_OUTPUT "processed"

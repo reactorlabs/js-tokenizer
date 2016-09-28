@@ -28,6 +28,11 @@ public:
          */
         unsigned errors;
 
+
+        bool finished() {
+            return queueSize == 0 and activeThreads == 0;
+        }
+
         Stats(unsigned activeThreads, unsigned queueSize, unsigned jobsDone, unsigned errors):
             activeThreads(activeThreads),
             queueSize(queueSize),

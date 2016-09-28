@@ -1,10 +1,13 @@
 #include <cstdlib>
 #include <iostream>
+#include <thread>
 
 #include "data.h"
 #include "validator.h"
 #include "crawler.h"
 #include "tokenizer.h"
+#include "merger.h"
+#include "writer.h"
 
 
 void tokenize(int argc, char * argv[]) {
@@ -12,11 +15,20 @@ void tokenize(int argc, char * argv[]) {
 
     Crawler::initializeWorkers(1);
     Tokenizer::initializeWorkers(1);
-//    Writer::initializeWorkers(1);
+    Merger::initializeWorkers(1);
+    Writer::initializeOutputDirectory("processed");
+    Writer::initializeWorkers(1);
 
     while (true) {
-
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        Worker::Stats c = Crawler::Statistic();
+        Worker::Stats t = Tokenizer::Statistic();
+        Worker::Stats m = Merger::Statistic();
+        Worker::Stats w = Writer::Statistic();
+        if (w.finished() and m.finished() and t.finished() and c.finished())
+            break;
     }
+    Worker::Log("ALL DONE");
 }
 
 

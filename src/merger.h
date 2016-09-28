@@ -1,4 +1,7 @@
 #pragma once
+
+#include <atomic>
+
 #include "data.h"
 #include "worker.h"
 
@@ -28,6 +31,10 @@ private:
 
     void process(MergerJob const & job) override;
 
+
+
+    static std::atomic_uint fid_;
+    static std::atomic_uint pid_;
 
 
 };

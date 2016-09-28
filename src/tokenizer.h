@@ -9,11 +9,13 @@ struct TokenizerJob {
     TokenizerJob(std::string const & path, std::string const & url):
         project(new GitProject(path, url)),
         relPath("") {
+        ++project->handles_;
     }
 
     TokenizerJob(TokenizerJob const & job, std::string const & dir):
         project(job.project),
         relPath(job.relPath.empty() ? dir : (job.relPath + "/" + dir)) {
+        ++project->handles_;
     }
 
     std::string absPath() const {

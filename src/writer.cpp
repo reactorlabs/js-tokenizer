@@ -1,3 +1,5 @@
+#include <thread>
+
 #include "utils.h"
 
 #include "writer.h"
@@ -19,7 +21,6 @@ Writer::Writer(unsigned index):
 
 }
 
-
 void Writer::initializeOutputDirectory(std::string const & output) {
     outputDir_ = output;
     if (isDirectory(output))
@@ -31,6 +32,15 @@ void Writer::initializeOutputDirectory(std::string const & output) {
     createDirectory(output + "/" + PATH_FULL_STATS_FILE);
 }
 
+void Writer::initializeWorkers(unsigned num) {
+    for (unsigned i = 0; i < num; ++i) {
+        std::thread t([i] () {
+            Writer c(i);
+            c();
+        });
+        t.detach();
+    }
+}
 
 void Writer::openStreamAndCheck(std::ofstream & s, std::string const & filename) {
     s.open(filename);
@@ -46,14 +56,13 @@ void Writer::process(WriterJob const & job) {
     if (not job.file->empty() and not job.isClone()) {
         job.file->stats.writeSourcererStats(files_);
         job.file->writeTokens(tokens_);
-
+    } else {
+        CloneInfo ci(job.clonePid, job.cloneFid, job.file->pid(), job.file->id());
+        ci.writeTo(clones_);
     }
     // finally check if the project should be written as well
-
-
-
-
-
-
-
+    if (job.writeProject)
+        job.file->project()->writeTo(projs_);
+    // finally delete the file
+    delete job.file;
 }

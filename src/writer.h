@@ -7,14 +7,26 @@
 struct WriterJob {
     TokenizedFile * file;
 
+    unsigned clonePid;
+    unsigned cloneFid;
+
+    bool writeProject;
+
     bool isClone() const {
+        return clonePid != 0 and cloneFid != 0;
+    }
 
+    static_assert(FILE_ID_STARTS_AT > 0, "0 means not initialized");
+    static_assert(PROJECT_ID_STARTS_AT > 0, "0 means not initialized");
+
+    WriterJob(TokenizedFile * file, bool writeProject = false):
+        file(file),
+        clonePid(0),
+        cloneFid(0),
+        writeProject(writeProject) {
     }
 
 
-    WriterJob(TokenizedFile * file):
-        file(file) {
-    }
 
     friend std::ostream & operator << (std::ostream & s, WriterJob const & job);
 };
@@ -28,6 +40,8 @@ public:
       Makes sure all teh subdirs exist. If they do, reports a warning as data might be corrupted.
      */
     static void initializeOutputDirectory(std::string const & output);
+
+    static void initializeWorkers(unsigned num);
 
 private:
 

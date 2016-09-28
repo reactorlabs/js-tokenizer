@@ -4,10 +4,14 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <atomic>
 
 #include "utils.h"
 #include "config.h"
 
+
+constexpr unsigned FILE_ID_STARTS_AT = 1;
+constexpr unsigned PROJECT_ID_STARTS_AT = 1;
 
 /** Representation of a git project.
 
@@ -27,19 +31,31 @@ public:
         return githubUrl_;
     }
 
+    unsigned id() const {
+        return id_;
+    }
+
+    void writeTo(std::ostream & s) {
+        s << id_ << "," << path() << "," << githubUrl() << std::endl;
+    }
+
     GitProject():
-        id_(0) {
+        id_(0),
+        handles_(0) {
     }
 
     GitProject(std::string const & path, std::string const & url):
         id_(0),
         path_(path),
-        url_(url) {
+        url_(url),
+        handles_(0) {
     }
 
 private:
     friend class FileStats;
     friend class TokenizedFile;
+    friend class Tokenizer;
+    friend class TokenizerJob;
 
     static std::string githubUrl(std::string const & giturl) {
         std::string url = giturl;
@@ -65,6 +81,9 @@ private:
     std::string path_;
     std::string url_;
     mutable std::string githubUrl_;
+
+
+    std::atomic_uint handles_;
 
     static std::vector<GitProject *> projects_;
 
@@ -156,8 +175,8 @@ private:
 
     void loadFrom(std::string const & tmp);
 
-    unsigned id_;
-    GitProject * project_;
+    unsigned id_ = 0;
+    GitProject * project_ = nullptr;
     std::string relPath_;
     unsigned bytes_ = 0;
     unsigned commentBytes_ = 0;
@@ -165,7 +184,7 @@ private:
     unsigned tokenBytes_ = 0;
     unsigned separatorBytes_ = 0;
 
-    unsigned loc_ = 0;
+    unsigned loc_ = 1;
     unsigned commentLoc_ = 0;
     unsigned emptyLoc_ = 0;
 
@@ -182,10 +201,6 @@ private:
 
 class TokenizedFile {
 public:
-
-    TokenizedFile(GitProject * project, std::string const & relPath):
-        stats(project, relPath) {
-    }
 
     bool empty() const {
         return tokens.freqs_.empty();
@@ -232,11 +247,45 @@ public:
         return stats.absPath();
     }
 
+    unsigned id() const {
+        return stats.id_;
+    }
+
+    unsigned pid() const {
+        return stats.project_->id_;
+    }
+
+    GitProject * project() const {
+        return stats.project_;
+    }
+
+    void setId(unsigned id) {
+        assert(stats.id_ == 0);
+        stats.id_ = id;
+    }
+
+    void setPid(unsigned id) {
+        assert(stats.project_->id_ == 0);
+        stats.project_->id_ = id;
+    }
+
     /** Outputs the tokens in sourcererCC's format.
      */
     void writeTokens(std::ostream & s);
 
+    TokenizedFile(GitProject * project, std::string const & relPath):
+        stats(project, relPath) {
+        ++project->handles_;
+    }
 
+    /** Deletes the tokenized file.
+
+      If it is the last handle to the project class, deletes the project class as well.
+     */
+    ~TokenizedFile() {
+        if (--stats.project_->handles_ == 0)
+            delete stats.project_;
+    }
 
     FileStats stats;
     TokenMap tokens;
@@ -261,6 +310,17 @@ public:
 
     unsigned fid2() const {
         return fid2_;
+    }
+
+    void writeTo(std::ostream & s) {
+        s << pid1_ << "," << fid1_ << "," << pid2_ << "," << fid2_ << std::endl;
+    }
+
+    CloneInfo(unsigned pid1, unsigned fid1, unsigned pid2, unsigned fid2):
+        pid1_(pid1),
+        fid1_(fid1),
+        pid2_(pid2),
+        fid2_(fid2) {
     }
 
 
