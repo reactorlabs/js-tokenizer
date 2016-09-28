@@ -5,6 +5,8 @@
 
 #include "config.h"
 
+#error "here "
+
 class Worker {
 public:
 

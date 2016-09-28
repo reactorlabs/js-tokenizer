@@ -1,3 +1,5 @@
+#ifdef HAHA
+
 #include <cstdlib>
 #include <mutex>
 #include <thread>
@@ -147,3 +149,4 @@ int main2(int argc, char * argv[]) {
 
     return EXIT_FAILURE;
 }
+#endif
