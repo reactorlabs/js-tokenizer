@@ -352,7 +352,7 @@ void JSTokenizer::tokenize() {
             pop(1);
             addToken(substr(start, pos()));
         }
-        size_t start = pos();
+        start = pos();
         switch (top()) {
             case '\n':
                 newline();
