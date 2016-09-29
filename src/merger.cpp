@@ -3,13 +3,14 @@
 #include "merger.h"
 #include "writer.h"
 
-unsigned Merger::fid_ = FILE_ID_STARTS_AT;
-unsigned Merger::pid_ = PROJECT_ID_STARTS_AT;
+std::atomic_uint Merger::fid_(FILE_ID_STARTS_AT);
+std::atomic_uint Merger::pid_(PROJECT_ID_STARTS_AT);
 
 Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
 std::unordered_map<std::string, Merger::CloneInfo> Merger::clones_;
-
 std::unordered_map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
+
+std::mutex Merger::accessM_;
 
 std::atomic_uint Merger::numClones_(0);
 std::atomic_uint Merger::numEmptyFiles_(0);
@@ -37,9 +38,13 @@ Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
     if (stopClones_ == StopClones::none)
         return CloneInfo();
     std::string const & hash = stopClones_ == StopClones::file ? tf->stats.fileHash() : tf->stats.tokensHash();
+    accessM_.lock();
     auto i = clones_.find(hash);
+    accessM_.unlock();
     if (i == clones_.end()) {
+        accessM_.lock();
         clones_[hash] = CloneInfo(tf->pid(), tf->id());
+        accessM_.unlock();
         return CloneInfo();
     } else {
         ++numClones_;
@@ -51,10 +56,12 @@ Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
 void Merger::idsForTokens(TokenizedFile * tf) {
     TokenMap tm;
     for (auto i : tf->tokens) {
+        accessM_.lock();
         auto j = uniqueTokenIds_.find(i.first);
         if (j == uniqueTokenIds_.end())
             j = uniqueTokenIds_.insert(std::pair<std::string, TokenInfo>(i.first, TokenInfo(uniqueTokenIds_.size()))).first;
         ++(j->second);
+        accessM_.unlock();
         tm.add(STR(std::hex << j->second.id), i.second);
     }
     tf->updateTokenMap(std::move(tm));

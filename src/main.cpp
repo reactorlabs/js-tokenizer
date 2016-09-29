@@ -65,7 +65,7 @@ void tokenize(int argc, char * argv[]) {
 
     Crawler::initializeWorkers(2);
     Tokenizer::initializeWorkers(8);
-    Merger::initializeWorkers(1);
+    Merger::initializeWorkers(3);
     Writer::initializeOutputDirectory("processed");
     Writer::initializeWorkers(1);
     do {

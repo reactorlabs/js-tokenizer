@@ -41,6 +41,7 @@ public:
     }
 
     static unsigned NumUniqueTokens() {
+        std::lock_guard<std::mutex> g(accessM_);
         return uniqueTokenIds_.size();
     }
 
@@ -95,14 +96,17 @@ private:
 
 
 
-    static unsigned fid_;
-    static unsigned pid_;
+    static std::atomic_uint fid_;
+    static std::atomic_uint pid_;
 
     static StopClones stopClones_;
     static std::unordered_map<std::string, CloneInfo> clones_;
 
 
     static std::unordered_map<std::string, TokenInfo> uniqueTokenIds_;
+
+
+    static std::mutex accessM_;
 
     static std::atomic_uint numClones_;
 

@@ -20,6 +20,10 @@ unordered    00:29 - 63.16 mbps
 
 all unordered 00:26 - 68.56 mbps
 
+two mergers 00:20 - 91.35 mbps
+
+three mergers 00:18 - 97.56 mbps
+
 */
 
 /** Default directory names for the output files.
