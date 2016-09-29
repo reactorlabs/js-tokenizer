@@ -45,6 +45,7 @@ inline bool endsWith(std::string const & str, std::string const & suffix) {
 }
 
 inline bool isLanguageFile(std::string const & filename) {
+    // TODO add min.js as well, and basically, make configurable...
     return endsWith(filename, ".js");
 
 }
