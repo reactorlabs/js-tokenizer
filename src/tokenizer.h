@@ -38,13 +38,6 @@ public:
 
     static void initializeWorkers(unsigned num);
 
-
-protected:
-
-    void schedule(TokenizerJob const & job) {
-        QueueWorker<TokenizerJob>::schedule(job);
-    }
-
 private:
 
     /** Looks at all javascript files in the directory and tokenizes them.

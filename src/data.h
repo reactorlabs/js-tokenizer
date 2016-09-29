@@ -1,6 +1,7 @@
 #pragma once
 #include <set>
 #include <unordered_map>
+#include <map>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -20,6 +21,13 @@ constexpr unsigned PROJECT_ID_STARTS_AT = 1;
 class GitProject {
 public:
     static void parseFile(std::string const & filename);
+
+    static GitProject * Get(size_t id) {
+        id -= PROJECT_ID_STARTS_AT;
+        assert(id < projects_.size());
+        return projects_[id];
+    }
+
 
     std::string const & path() const {
         return path_;
@@ -49,6 +57,10 @@ public:
         path_(path),
         url_(url),
         handles_(0) {
+    }
+
+    static unsigned NumProjects() {
+        return projects_.size();
     }
 
 private:
@@ -96,8 +108,8 @@ private:
  */
 class TokenMap {
 public:
-    typedef std::unordered_map<std::string, unsigned>::const_iterator const_iterator;
-    typedef std::unordered_map<std::string, unsigned>::iterator iterator;
+    typedef std::map<std::string, unsigned>::const_iterator const_iterator;
+    typedef std::map<std::string, unsigned>::iterator iterator;
 
     const_iterator begin() const {
         return freqs_.begin();
@@ -126,7 +138,7 @@ private:
 
     std::string calculateHash();
 
-    std::unordered_map<std::string, unsigned> freqs_;
+    std::map<std::string, unsigned> freqs_;
 };
 
 
@@ -140,7 +152,7 @@ public:
         return files_[id];
     }
 
-    static size_t numFiles() {
+    static size_t NumFiles() {
         return files_.size();
     }
 
@@ -176,6 +188,10 @@ public:
      */
     void writeSourcererStats(std::ostream & s);
 
+
+    unsigned id_ = 0;
+
+
     unsigned totalTokens = 0;
     unsigned errors = 0;
 
@@ -192,7 +208,6 @@ private:
 
     void loadFrom(std::string const & tmp);
 
-    unsigned id_ = 0;
     GitProject * project_ = nullptr;
     std::string relPath_;
     unsigned bytes_ = 0;
@@ -297,13 +312,17 @@ public:
         ++project->handles_;
     }
 
+    TokenizedFile() = default;
+
+
     /** Deletes the tokenized file.
 
       If it is the last handle to the project class, deletes the project class as well.
      */
     ~TokenizedFile() {
-        if (--stats.project_->handles_ == 0)
-            delete stats.project_;
+        if (stats.project_ != nullptr)
+            if (--stats.project_->handles_ == 0)
+                delete stats.project_;
     }
 
     FileStats stats;

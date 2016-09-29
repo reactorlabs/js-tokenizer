@@ -6,8 +6,8 @@
 
 namespace {
 
-    std::set<std::string> initializeJSKeywords() {
-        std::set<std::string> result;
+    std::unordered_set<std::string> initializeJSKeywords() {
+        std::unordered_set<std::string> result;
         result.insert("abstract");
         result.insert("arguments");
         result.insert("boolean");
@@ -75,7 +75,11 @@ namespace {
     }
 }
 
-std::set<std::string> JSTokenizer::jsKeywords_ = initializeJSKeywords();
+std::unordered_set<std::string> JSTokenizer::jsKeywords_ = initializeJSKeywords();
+
+bool JSTokenizer::ignoreComments_ = true;
+bool JSTokenizer::ignoreSeparators_ = true;
+bool JSTokenizer::ignoreWhitespace_ = true;
 
 
 bool JSTokenizer::isKeyword(std::string const &s) {
@@ -143,17 +147,23 @@ void JSTokenizer::addSeparator(size_t start) {
     //std::cout << "Separator: " << substr(start, pos()) << std::endl;
     f_.addSeparator(pos_ - start);
     commentLine_ = false;
+    if (not ignoreSeparators_)
+        f_.addToken(substr(start, pos()));
 }
 
 void JSTokenizer::addComment(size_t start) {
     //std::cout << "Comment: " << substr(start, pos()) << std::endl;
     f_.addComment(pos_ - start);
     emptyLine_ = false;
+    if (not ignoreComments_)
+        f_.addToken(substr(start, pos()));
 }
 
 void JSTokenizer::addWhitespace(size_t start) {
     //std::cout << "Whitespace: " << substr(start, pos()) << std::endl;
     f_.addWhitespace(pos_ - start);
+    if (not ignoreWhitespace_)
+        f_.addToken(substr(start, pos()));
 }
 
 
@@ -339,7 +349,6 @@ void JSTokenizer::multiLineComment() {
 }
 
 void JSTokenizer::tokenize() {
-    loadEntireFile();
     emptyLine_ = true;
     commentLine_ = true;
     size_t e = size();

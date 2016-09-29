@@ -38,6 +38,8 @@ three mergers 00:18 - 97.56 mbps
 #define PATH_CLONES_FILE "clones"
 #define PATH_FULL_STATS_FILE "files_full_stats"
 
+#define PATH_DIFFS "diffs"
+
 /** File names for the respective output files.
 
   This is chosen to correspond with sourcererCC's names, where appropriate.
