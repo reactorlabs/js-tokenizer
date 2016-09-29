@@ -71,10 +71,12 @@ void Merger::process(MergerJob const & job) {
     bool writeProject = false;
     TokenizedFile * tf = job.file;
     tf->setId(fid_++);
+    accessM_.lock();
     if (tf->pid() == 0) {
         tf->setPid(pid_++);
         writeProject = true;
     }
+    accessM_.unlock();
 
     CloneInfo ci = checkClones(tf);
 
