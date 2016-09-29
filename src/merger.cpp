@@ -80,6 +80,7 @@ void Merger::process(MergerJob const & job) {
         ++numErrorFiles_;
     if (tf->stats.totalTokens == 0)
         ++numEmptyFiles_;
+
     Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
 
 }

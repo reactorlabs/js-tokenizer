@@ -61,8 +61,9 @@ void Tokenizer::tokenize(GitProject * project, std::string const & relPath) {
     Worker::Log(STR("tokenizing " << tf->absPath()));
     JSTokenizer::tokenize(tf);
 
-    Merger::Schedule(MergerJob(tf));
-
     processedBytes_ += tf->stats.bytes();
     ++processedFiles_;
+
+    Merger::Schedule(MergerJob(tf));
+
 }
