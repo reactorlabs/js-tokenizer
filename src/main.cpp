@@ -96,9 +96,9 @@ void validate(int argc, char * argv[]) {
     start = std::chrono::high_resolution_clock::now();
     Validator::InitializeThreads(16);
     std::cout << "Initialized" << std::endl;
-    while (not Worker::WaitForFinished(1000)) {
+    do {
         Validator::DisplayStats(secondsSince(start));
-    }
+    } while (not Worker::WaitForFinished(1000));
     Validator::DisplayStats(secondsSince(start));
     std::cout << cursorDown(10);
 

@@ -52,7 +52,6 @@ void Worker::Print(std::string const & msg) {
 }
 
 void Worker::Log(std::string const & msg) {
-    return;
     std::lock_guard<std::mutex> g(m_);
     std::cout << "LOG: " << msg;
     std::string name = currentName();
