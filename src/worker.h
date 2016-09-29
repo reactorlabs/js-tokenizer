@@ -143,6 +143,16 @@ public:
         std::lock_guard<std::mutex> g(m_);
         return Stats(activeThreads_, jobs_.size(), jobsDone_, errors_);
     }
+
+    static unsigned QueueLength() {
+        std::lock_guard<std::mutex> g(m_);
+        return jobs_.size();
+    }
+
+    static void SetQueueLimit(unsigned limit) {
+        queueLimit_ = limit;
+    }
+
 protected:
     QueueWorker(std::string const & name):
         Worker(name) {
@@ -153,8 +163,10 @@ protected:
       Either appends given job to the queue, or utilizes the current thread to schedule it immediately.
      */
     void schedule(JOB const & job) {
-        // TODO actually do the internal processing
-        Schedule(job);
+        if (queueLimit_ == 0 or jobs_.size() >= queueLimit_)
+            processAndCheck(job);
+        else
+            Schedule(job);
     }
 
     void activate() {
@@ -166,15 +178,6 @@ protected:
         --activeThreads_;
         Worker::deactivate();
     }
-
-
-private:
-    /** This is where all the magic happens.
-
-      Override this in children to define worker's actual behavior.
-     */
-    virtual void process(JOB const & job) = 0;
-
 
     /** Processes the job and checks for errors, updating the counters.
 
@@ -204,7 +207,12 @@ private:
         error_ = oldError;
     }
 
+private:
+    /** This is where all the magic happens.
 
+      Override this in children to define worker's actual behavior.
+     */
+    virtual void process(JOB const & job) = 0;
 
     /** Gets new piece of job from the queue, or blocks the thread if empty.
      */
@@ -226,6 +234,8 @@ private:
     static std::mutex m_;
     static std::condition_variable cv_;
     static std::queue<JOB> jobs_;
+
+    static unsigned queueLimit_;
 };
 
 template<typename JOB>
@@ -245,6 +255,9 @@ std::condition_variable QueueWorker<JOB>::cv_;
 
 template<typename JOB>
 std::queue<JOB> QueueWorker<JOB>::jobs_;
+
+template<typename JOB>
+unsigned QueueWorker<JOB>::queueLimit_;
 
 template<typename JOB>
 class QueueProcessor : public QueueWorker<JOB> {

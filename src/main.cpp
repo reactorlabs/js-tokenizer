@@ -64,15 +64,19 @@ void tokenize(int argc, char * argv[]) {
 
     start = std::chrono::high_resolution_clock::now();
 
-    Crawler::initializeWorkers(16);
-    Tokenizer::initializeWorkers(16);
-    Merger::initializeWorkers(4);
+    Crawler::SetQueueLimit(1000);
+    Tokenizer::SetQueueLimit(1000);
+
+    Crawler::initializeWorkers(2);
+    Tokenizer::initializeWorkers(8);
+    Merger::initializeWorkers(3);
     Writer::initializeOutputDirectory("processed");
     Writer::initializeWorkers(1);
     do {
         displayStats(secondsSince(start));
     } while (not Worker::WaitForFinished(1000));
     displayStats(secondsSince(start));
+    std::cout << cursorDown(15);
     Worker::Log("ALL DONE");
     std::ofstream tokens("processed/tokens.txt");
     Merger::writeGlobalTokens(tokens);
@@ -81,9 +85,42 @@ void tokenize(int argc, char * argv[]) {
 
 
 
+
+/** Validates the tokenizer results.
+
+  I.e. runs diffs on its clones where file hashes differ and checks that file hash same clones are byte for byte identical.
+ */
+void validate(int argc, char * argv[]) {
+    Validator::Initialize("processed");
+    start = std::chrono::high_resolution_clock::now();
+    Validator::InitializeThreads(16);
+    do {
+        Validator::DisplayStats(secondsSince(start));
+    } while (not Worker::WaitForFinished(1000));
+    Validator::DisplayStats(secondsSince(start));
+    std::cout << cursorDown(10);
+
+
+}
+
+
+
+
+void process(int argc, char * argv[]) {
+
+}
+
+
+
+
+
+
+
+
 int main(int argc, char * argv[]) {
     try {
-        tokenize(argc, argv);
+        //tokenize(argc, argv);
+        validate(argc, argv);
 /*        FileStats::parseFile("/home/peta/delete/files-0.txt");
         std::cout << "Parsed " << FileStats::numFiles() << " files" << std::endl;
 

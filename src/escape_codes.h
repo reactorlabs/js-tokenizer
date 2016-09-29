@@ -38,6 +38,11 @@ inline std::string cursorUp(unsigned lines) {
 /**Moves the cursor down by COUNT rows; the default count is 1. */
 CODE(cursorDown, "[1B")
 
+inline std::string cursorDown(unsigned lines) {
+    return STR(CSI << "[" << lines << "B");
+}
+
+
 /** Moves the cursor forward by COUNT columns; the default count is 1. */
 CODE(cursorRight, "[1C")
 

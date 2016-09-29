@@ -74,11 +74,12 @@ void FileStats::loadFrom(std::string const & tmp) {
     std::vector<std::string> items(split(tmp, ','));
     try {
         if (items.size() != 17)
-            throw "";
-        //pid_ = std::stoi(items[0]); // TODO deal with incomplete projects
-        id_ = std::stoi(items[1]);
+            throw STR("Invalid line format");
+        id_ = std::stoi(items[0]);
+        project_ = GitProject::Get(std::stoi(items[1]));
+        if (unescapePath(items[2]) != project_->path())
+            throw STR("File " << id_ << " contains invalid path for its project");
 
-        //projectPath_ = unescapePath(items[2]); // TODO deal with incomplete projects
         relPath_ = unescapePath(items[3]);
 
         bytes_ = std::stoi(items[4]);
@@ -98,6 +99,8 @@ void FileStats::loadFrom(std::string const & tmp) {
 
         fileHash_ = items[15];
         tokensHash_ = items[16];
+    } catch (std::string const & e) {
+        throw e;
     } catch (...) {
         throw "Invalid format of statistics file";
     }

@@ -78,9 +78,13 @@ void Merger::process(MergerJob const & job) {
     }
     accessM_.unlock();
 
+    idsForTokens(tf);
+
+    tf->calculateTokensHash();
+
+
     CloneInfo ci = checkClones(tf);
 
-    idsForTokens(tf);
 
 
     processedBytes_ += tf->stats.bytes();

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <set>
+#include <unordered_set>
 
 #include "../data.h"
 
@@ -12,12 +12,31 @@ class JSTokenizer {
 public:
     static void tokenize(TokenizedFile * f) {
         JSTokenizer t(f);
+        t.loadEntireFile();
         t.tokenize();
         f->updateFileStats(t.data_);
-        f->calculateTokensHash();
     }
 
+    static void Tokenize(TokenizedFile & f, std::string const & contents) {
+        JSTokenizer t(&f);
+        t.data_ = contents;
+        t.pos_ = 0;
+        t.tokenize();
+        f.updateFileStats(t.data_);
+    }
 
+    static bool & IgnoreSeparators() {
+        return ignoreSeparators_;
+
+    }
+
+    static bool & IgnoreComments() {
+        return ignoreComments_;
+    }
+
+    static bool & IgnoreWhitespace() {
+        return ignoreWhitespace_;
+    }
 
 private:
 
@@ -161,9 +180,11 @@ private:
 
 
 
-    static std::set<std::string> jsKeywords_;
+    static std::unordered_set<std::string> jsKeywords_;
 
-
+    static bool ignoreComments_;
+    static bool ignoreSeparators_;
+    static bool ignoreWhitespace_;
 
 
 };
