@@ -298,14 +298,8 @@ bool JSTokenizer::identifierOrKeyword() {
     while (isIdentifier(top()))
         pop(1);
     std::string s = substr(start, pos());
-    if (s == "") {
-        Worker::Log(STR("Unknown character " << top()));
-        pop(1);
-        s = substr(start, pos());
-        f_.tokenizationError();
-    }
-
-    addToken(s);
+    if (not s.empty())
+        addToken(s);
     return isKeyword(s);
 }
 
@@ -350,7 +344,14 @@ void JSTokenizer::tokenize() {
     commentLine_ = true;
     size_t e = size();
     bool expectRegExp = true;
+    size_t start = e;
     while (pos() != e) {
+        if (start == pos()) {
+            Worker::Log(STR("Unknown character " << top()));
+            f_.tokenizationError();
+            pop(1);
+            addToken(substr(start, pos()));
+        }
         size_t start = pos();
         switch (top()) {
             case '\n':
