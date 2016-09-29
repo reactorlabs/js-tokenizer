@@ -10,8 +10,52 @@
 #include "merger.h"
 #include "writer.h"
 
+#include "escape_codes.h"
+
 std::chrono::high_resolution_clock::time_point start;
 std::chrono::high_resolution_clock::time_point end;
+
+
+void displayStats(double duration) {
+    Worker::Stats c = Crawler::Statistic();
+    Worker::Stats t = Tokenizer::Statistic();
+    Worker::Stats m = Merger::Statistic();
+    Worker::Stats w = Writer::Statistic();
+    Worker::LockOutput();
+    std::cout << eraseDown;
+    std::cout << "Elapsed    " << time(duration) << " [h:mm:ss]" << std::endl << std::endl;
+
+    std::cout << "Active threads " << Worker::NumActiveThreads() << std::endl;
+    std::cout << "Crawler        " << c << std::endl;
+    std::cout << "Tokenizer      " << t << std::endl;
+    std::cout << "Merger         " << m << std::endl;
+    std::cout << "Writer         " << w << std::endl << std::endl;
+
+    std::cout << "Files      "
+              << std::setw(8) << Tokenizer::ProcessedFiles() << " tokenizer"
+              << std::setw(8) << Merger::ProcessedFiles() << " merger"
+              << std::setw(8) << Writer::ProcessedFiles() << " writer"
+              << std::endl;
+
+    std::cout << "Bytes      " << std::setprecision(2) << std::fixed
+              << std::setw(8) << Tokenizer::ProcessedMBytes() << " tokenizer"
+              << std::setw(8) << Merger::ProcessedMBytes() << " merger"
+              << std::setw(8) << Writer::ProcessedMBytes() << " writer [MB]"
+              << std::endl;
+
+    std::cout << "Throughput "
+              << std::setw(8) << (Tokenizer::ProcessedMBytes() / duration) << " tokenizer"
+              << std::setw(8) << (Merger::ProcessedMBytes() / duration) << " merger"
+              << std::setw(8) << (Writer::ProcessedMBytes() / duration) << " writer [MB/s]"
+              << std::endl << std::endl;
+
+    std::cout << "Unique tokens   " << Merger::NumUniqueTokens() << std::endl;
+    std::cout << "Empty files     " << Merger::NumEmptyFiles() << pct(Merger::NumEmptyFiles(), Merger::ProcessedFiles()) << std::endl;
+    std::cout << "Detected clones " << Merger::NumClones() << pct(Merger::NumClones(), Merger::ProcessedFiles()) << std::endl;
+    std::cout << cursorUp(15);
+    Worker::UnlockOutput();
+}
+
 
 
 void tokenize(int argc, char * argv[]) {
@@ -24,43 +68,10 @@ void tokenize(int argc, char * argv[]) {
     Merger::initializeWorkers(1);
     Writer::initializeOutputDirectory("processed");
     Writer::initializeWorkers(1);
-
-    while (true) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        Worker::Stats c = Crawler::Statistic();
-        Worker::Stats t = Tokenizer::Statistic();
-        Worker::Stats m = Merger::Statistic();
-        Worker::Stats w = Writer::Statistic();
-        double s = secondsSince(start);
-        std::cout << "Elapsed    " << time(s) << " [h:mm:ss]" << std::endl << std::endl;
-
-        std::cout << "Crawler    " << c << std::endl;
-        std::cout << "Tokenizer  " << t << std::endl;
-        std::cout << "Merger     " << m << std::endl;
-        std::cout << "Writer     " << w << std::endl << std::endl;
-
-        std::cout << "Files      "
-                  << std::setw(8) << Tokenizer::ProcessedFiles() << " tokenizer"
-                  << std::setw(8) << Merger::ProcessedFiles() << " merger"
-                  << std::setw(8) << Writer::ProcessedFiles() << " writer"
-                  << std::endl;
-
-        std::cout << "Bytes      " << std::setprecision(2) << std::fixed
-                  << std::setw(8) << Tokenizer::ProcessedMBytes() << " tokenizer"
-                  << std::setw(8) << Merger::ProcessedMBytes() << " merger"
-                  << std::setw(8) << Writer::ProcessedMBytes() << " writer [MB]"
-                  << std::endl;
-
-        std::cout << "Throughput "
-                  << std::setw(8) << (Tokenizer::ProcessedMBytes() / s) << " tokenizer"
-                  << std::setw(8) << (Merger::ProcessedMBytes() / s) << " merger"
-                  << std::setw(8) << (Writer::ProcessedMBytes() / s) << " writer [MB/s]"
-                  << std::endl;
-
-
-        if (w.finished() and m.finished() and t.finished() and c.finished())
-            break;
-    }
+    do {
+        displayStats(secondsSince(start));
+    } while (not Worker::WaitForFinished(1000));
+    displayStats(secondsSince(start));
     Worker::Log("ALL DONE");
     std::ofstream tokens("processed/tokens.txt");
     Merger::writeGlobalTokens(tokens);

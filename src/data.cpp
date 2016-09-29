@@ -91,10 +91,10 @@ void FileStats::loadFrom(std::string const & tmp) {
         commentLoc_ = std::stoi(items[10]);
         emptyLoc_ = std::stoi(items[11]);
 
-        totalTokens_ = std::stoi(items[12]);
+        totalTokens = std::stoi(items[12]);
         uniqueTokens_ = std::stoi(items[13]);
 
-        errors_ = std::stoi(items[14]);
+        errors = std::stoi(items[14]);
 
         fileHash_ = items[15];
         tokensHash_ = items[16];
@@ -116,9 +116,9 @@ void FileStats::writeFullStats(std::ostream & s) {
       << loc_ << ","
       << commentLoc_ << ","
       << emptyLoc_ << ","
-      << totalTokens_ << ","
+      << totalTokens << ","
       << uniqueTokens_ << ","
-      << errors_ << ","
+      << errors << ","
       << fileHash_ << ","
       << tokensHash_ << std::endl;
 }
@@ -171,7 +171,7 @@ void TokenizedFile::updateFileStats(std::string const & contents) {
 void TokenizedFile::writeTokens(std::ostream & s) {
     s << stats.project_->id_ << ","
       << stats.id_ << ","
-      << stats.totalTokens_ << ","
+      << stats.totalTokens << ","
       << stats.uniqueTokens_ << ","
       << stats.tokensHash_ << "@#@";
     tokens.writeSourcererFormat(s);

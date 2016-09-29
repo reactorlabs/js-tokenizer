@@ -11,7 +11,9 @@ std::map<std::string, Merger::CloneInfo> Merger::clones_;
 
 std::map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
 
-unsigned Merger::numClones_ = 0;
+std::atomic_uint Merger::numClones_(0);
+std::atomic_uint Merger::numEmptyFiles_(0);
+std::atomic_uint Merger::numErrorFiles_(0);
 
 void Merger::initializeWorkers(unsigned num) {
     for (unsigned i = 0; i < num; ++i) {
@@ -72,8 +74,12 @@ void Merger::process(MergerJob const & job) {
     idsForTokens(tf);
 
 
-    Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
-
     processedBytes_ += tf->stats.bytes();
     ++processedFiles_;
+    if (tf->stats.errors > 0)
+        ++numErrorFiles_;
+    if (tf->stats.totalTokens == 0)
+        ++numEmptyFiles_;
+    Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
+
 }

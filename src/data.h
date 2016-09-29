@@ -176,6 +176,10 @@ public:
      */
     void writeSourcererStats(std::ostream & s);
 
+    unsigned totalTokens = 0;
+    unsigned errors = 0;
+
+
 private:
     friend class TokenizedFile;
 
@@ -201,10 +205,8 @@ private:
     unsigned commentLoc_ = 0;
     unsigned emptyLoc_ = 0;
 
-    unsigned totalTokens_ = 0;
     unsigned uniqueTokens_ = 0;
 
-    unsigned errors_ = 0;
 
     std::string fileHash_;
     std::string tokensHash_;
@@ -226,7 +228,7 @@ public:
     }
 
     void addToken(std::string const & token) {
-        ++stats.uniqueTokens_;
+        ++stats.totalTokens;
         stats.tokenBytes_ += token.size();
         tokens.add(token);
     }
@@ -257,7 +259,7 @@ public:
     }
 
     void tokenizationError() {
-        ++stats.errors_;
+        ++stats.errors;
     }
 
     std::string absPath() {

@@ -61,6 +61,20 @@ public:
             return worker_->name_;
     }
 
+    static void LockOutput() {
+        m_.lock();
+    }
+
+    static void UnlockOutput() {
+        m_.unlock();
+    }
+
+    static bool WaitForFinished(int timeoutMillis);
+
+    static unsigned NumActiveThreads() {
+        return numThreads_;
+    }
+
 protected:
     /** Each worker must have a name.
      */
@@ -69,6 +83,17 @@ protected:
         if (worker_ != nullptr)
             throw STR("Worker " << worker_->name_ << " already running in thread attempting to create worker " << name);
         worker_ = this;
+    }
+
+    void activate() {
+        ++numThreads_;
+    }
+
+    void deactivate() {
+        if (--numThreads_ == 0) {
+            std::lock_guard<std::mutex> g(doneM_);
+            allDone_.notify_all();
+        };
     }
 
 protected:
@@ -82,6 +107,10 @@ private:
     static thread_local Worker * worker_;
 
     static std::mutex m_;
+
+    static std::mutex doneM_;
+    static std::condition_variable allDone_;
+    static std::atomic_uint numThreads_;
 
 };
 
@@ -100,7 +129,7 @@ public:
         Worker::Log("Started...");
         // bump up the number of active threads
         m_.lock();
-        ++activeThreads_;
+        activate();
         m_.unlock();
         while (true) {
             JOB job = getJob();
@@ -126,6 +155,16 @@ protected:
     void schedule(JOB const & job) {
         // TODO actually do the internal processing
         Schedule(job);
+    }
+
+    void activate() {
+        Worker::activate();
+        ++activeThreads_;
+    }
+
+    void deactivate() {
+        --activeThreads_;
+        Worker::deactivate();
     }
 
 
@@ -172,9 +211,9 @@ private:
     JOB getJob() {
         std::unique_lock<std::mutex> g(m_);
         while (jobs_.empty()) {
-            --activeThreads_;
+            deactivate();
             cv_.wait(g);
-            ++activeThreads_;
+            activate();
         }
         JOB result = jobs_.front();
         jobs_.pop();

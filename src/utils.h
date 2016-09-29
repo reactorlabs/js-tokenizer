@@ -56,4 +56,7 @@ double secondsSince(std::chrono::high_resolution_clock::time_point start);
  */
 std::string time(double sec);
 
+inline std::string pct(unsigned x, unsigned total) {
+    return STR(" (" << (x * 100.0 / total) <<"%)");
+}
 

@@ -35,6 +35,22 @@ public:
 
     static void writeGlobalTokens(std::ostream & s);
 
+    static unsigned NumClones() {
+        return numClones_;
+    }
+
+    static unsigned NumUniqueTokens() {
+        return uniqueTokenIds_.size();
+    }
+
+    static unsigned NumEmptyFiles() {
+        return numEmptyFiles_;
+    }
+
+    static unsigned NumErrorFIles() {
+        return numErrorFiles_;
+    }
+
 private:
 
     struct CloneInfo {
@@ -87,6 +103,10 @@ private:
 
     static std::map<std::string, TokenInfo> uniqueTokenIds_;
 
-    static unsigned numClones_;
+    static std::atomic_uint numClones_;
+
+    static std::atomic_uint numEmptyFiles_;
+
+    static std::atomic_uint numErrorFiles_;
 
 };
