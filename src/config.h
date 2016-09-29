@@ -9,7 +9,18 @@
  */
 #define PATH_OUTPUT "processed"
 
+// 00:42
+// 43.83
 
+/*
+
+ordered map: 00:42 - 43.83 mbps
+
+unordered    00:29 - 63.16 mbps
+
+all unordered 00:26 - 68.56 mbps
+
+*/
 
 /** Default directory names for the output files.
 

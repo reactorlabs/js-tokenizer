@@ -1,6 +1,6 @@
 #pragma once
 #include <set>
-#include <map>
+#include <unordered_map>
 #include <string>
 #include <vector>
 #include <iostream>
@@ -96,8 +96,8 @@ private:
  */
 class TokenMap {
 public:
-    typedef std::map<std::string, unsigned>::const_iterator const_iterator;
-    typedef std::map<std::string, unsigned>::iterator iterator;
+    typedef std::unordered_map<std::string, unsigned>::const_iterator const_iterator;
+    typedef std::unordered_map<std::string, unsigned>::iterator iterator;
 
     const_iterator begin() const {
         return freqs_.begin();
@@ -126,7 +126,7 @@ private:
 
     std::string calculateHash();
 
-    std::map<std::string, unsigned> freqs_;
+    std::unordered_map<std::string, unsigned> freqs_;
 };
 
 
@@ -395,7 +395,7 @@ private:
     std::set<unsigned> ids_;
 
     static std::vector<CloneGroup *> groups_;
-    static std::map<unsigned, CloneGroup *> idToGroup_;
+    static std::unordered_map<unsigned, CloneGroup *> idToGroup_;
 
 };
 

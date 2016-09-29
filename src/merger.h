@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <unordered_map>
 
 #include "data.h"
 #include "worker.h"
@@ -98,10 +99,10 @@ private:
     static unsigned pid_;
 
     static StopClones stopClones_;
-    static std::map<std::string, CloneInfo> clones_;
+    static std::unordered_map<std::string, CloneInfo> clones_;
 
 
-    static std::map<std::string, TokenInfo> uniqueTokenIds_;
+    static std::unordered_map<std::string, TokenInfo> uniqueTokenIds_;
 
     static std::atomic_uint numClones_;
 

@@ -64,7 +64,7 @@ void tokenize(int argc, char * argv[]) {
     start = std::chrono::high_resolution_clock::now();
 
     Crawler::initializeWorkers(2);
-    Tokenizer::initializeWorkers(4);
+    Tokenizer::initializeWorkers(8);
     Merger::initializeWorkers(1);
     Writer::initializeOutputDirectory("processed");
     Writer::initializeWorkers(1);

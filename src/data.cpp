@@ -215,7 +215,7 @@ void CloneInfo::loadFrom(std::string const & tmp) {
 // CloneGroup ------------------------------------------------------------------
 
 std::vector<CloneGroup *> CloneGroup::groups_;
-std::map<unsigned, CloneGroup *> CloneGroup::idToGroup_;
+std::unordered_map<unsigned, CloneGroup *> CloneGroup::idToGroup_;
 
 void CloneGroup::find() {
     for (size_t i = 0, e = CloneInfo::numClones(); i != e; ++i) {

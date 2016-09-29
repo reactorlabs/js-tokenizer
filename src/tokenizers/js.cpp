@@ -298,6 +298,13 @@ bool JSTokenizer::identifierOrKeyword() {
     while (isIdentifier(top()))
         pop(1);
     std::string s = substr(start, pos());
+    if (s == "") {
+        Worker::Log(STR("Unknown character " << top()));
+        pop(1);
+        s = substr(start, pos());
+        f_.tokenizationError();
+    }
+
     addToken(s);
     return isKeyword(s);
 }
@@ -660,4 +667,6 @@ void JSTokenizer::loadEntireFile() {
     // UTF-8, skip if present
     if (data_.size() >= 3 and data_[0] == (char)0xef and data_[1] == (char) 0xbb and data_[2] == (char) 0xbf)
             pos_ = 3;
+    if (data_.size() >= 4 and data_[0] == 'P' and data_[1] =='K' and data_[2] == '\003' and data_[3] == '\004')
+        throw STR("File " << f_.absPath() << " seems to be archive");
 }

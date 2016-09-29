@@ -7,9 +7,9 @@ unsigned Merger::fid_ = FILE_ID_STARTS_AT;
 unsigned Merger::pid_ = PROJECT_ID_STARTS_AT;
 
 Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
-std::map<std::string, Merger::CloneInfo> Merger::clones_;
+std::unordered_map<std::string, Merger::CloneInfo> Merger::clones_;
 
-std::map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
+std::unordered_map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
 
 std::atomic_uint Merger::numClones_(0);
 std::atomic_uint Merger::numEmptyFiles_(0);
