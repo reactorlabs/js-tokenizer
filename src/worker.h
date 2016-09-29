@@ -254,7 +254,7 @@ public:
         return processedFiles_;
     }
 
-    static unsigned ProcessedBytes() {
+    static unsigned long ProcessedBytes() {
         return processedBytes_;
     }
 
@@ -269,12 +269,12 @@ protected:
     }
 
     static std::atomic_uint processedFiles_;
-    static std::atomic_uint processedBytes_;
+    static std::atomic_ulong processedBytes_;
 };
 
 template<typename JOB>
 std::atomic_uint QueueProcessor<JOB>::processedFiles_;
 
 template<typename JOB>
-std::atomic_uint QueueProcessor<JOB>::processedBytes_;
+std::atomic_ulong QueueProcessor<JOB>::processedBytes_;
 
