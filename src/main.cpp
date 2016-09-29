@@ -73,7 +73,7 @@ void tokenize(int argc, char * argv[]) {
     Writer::initializeWorkers(1);
     do {
         displayStats(secondsSince(start));
-    } while (not Worker::WaitForFinished(100));
+    } while (not Worker::WaitForFinished(1000));
     displayStats(secondsSince(start));
     std::cout << cursorDown(15);
     Worker::Log("ALL DONE");

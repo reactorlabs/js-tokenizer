@@ -86,11 +86,6 @@ public:
                 analyzeDiff(first, second);
             }
         }
-        std::cout << "Identical " << identical_ << std::endl;
-        std::cout << "Whitespace " << whitespaceDifferent_ << std::endl;
-        std::cout << "Comments" << commentDifferent_ << std::endl;
-        std::cout << "Separators " << separatorDifferent_ << std::endl;
-        std::cout << "Errors " << errors_ << std::endl;
         Worker::deactivate();
     }
 
@@ -133,7 +128,7 @@ private:
             }
             return;
         } catch (std::string const & e) {
-            Worker::Error(STR(e << " when checking " << one->absPath() << " and " << two->absPath()));
+            Worker::Log(STR(e << " when checking " << one->absPath() << " and " << two->absPath()));
         } catch (...) {
             Worker::Error(STR("Unspecified error when checking " << one->absPath() << " and " << two->absPath()));
         }
