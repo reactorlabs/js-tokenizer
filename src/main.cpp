@@ -59,13 +59,14 @@ void displayStats(double duration) {
 
 
 void tokenize(int argc, char * argv[]) {
-    Crawler::Schedule(CrawlerJob("/home/peta/sourcerer/data/jakub2"));
+    Crawler::Schedule(CrawlerJob("/mnt/data1/data70k"));
+    Crawler::Schedule(CrawlerJob("/mnt/data2/data70k2"));
 
     start = std::chrono::high_resolution_clock::now();
 
-    Crawler::initializeWorkers(2);
-    Tokenizer::initializeWorkers(8);
-    Merger::initializeWorkers(3);
+    Crawler::initializeWorkers(16);
+    Tokenizer::initializeWorkers(16);
+    Merger::initializeWorkers(4);
     Writer::initializeOutputDirectory("processed");
     Writer::initializeWorkers(1);
     do {
