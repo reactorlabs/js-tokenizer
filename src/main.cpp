@@ -91,9 +91,11 @@ void tokenize(int argc, char * argv[]) {
   I.e. runs diffs on its clones where file hashes differ and checks that file hash same clones are byte for byte identical.
  */
 void validate(int argc, char * argv[]) {
+    std::cout << "Initializing..." << std::endl;
     Validator::Initialize("processed");
     start = std::chrono::high_resolution_clock::now();
     Validator::InitializeThreads(16);
+    std::cout << "Initialized" << std::endl;
     do {
         Validator::DisplayStats(secondsSince(start));
     } while (not Worker::WaitForFinished(1000));
