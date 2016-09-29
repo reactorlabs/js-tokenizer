@@ -1,6 +1,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <iostream>
+#include <iomanip>
 #include <fstream>
 
 #include "utils.h"
@@ -72,8 +74,6 @@ std::string unescapePath(std::string const & from) {
     return result;
 }
 
-#include <iostream>
-
 std::string loadEntireFile(std::string const & filename) {
     std::ifstream s(filename, std::ios::in | std::ios::binary);
     if (not s.good())
@@ -119,5 +119,20 @@ void createDirectory(std::string const & path) {
         throw STR("Unable to create directory " << path);
 }
 
+double secondsSince(std::chrono::high_resolution_clock::time_point start) {
+    auto now = std::chrono::high_resolution_clock::now();
+    return std::chrono::duration_cast<std::chrono::milliseconds>(now - start).count() / 1000.0;
+}
+
+/** Nice time printer.
+ */
+std::string time(double sec) {
+    unsigned s = static_cast<unsigned>(sec);
+    unsigned m = s / 60;
+    unsigned h = m / 60;
+    s = s % 60;
+    m = m % 60;
+    return STR(h << ":" << std::setfill('0') << std::setw(2) << m << ":"  << std::setfill('0') << std::setw(2)<< s);
+}
 
 

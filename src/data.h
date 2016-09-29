@@ -144,6 +144,10 @@ public:
         return files_.size();
     }
 
+    unsigned bytes() const {
+        return bytes_;
+    }
+
     std::string absPath() const {
         return project_->path() + "/" + relPath_;
     }

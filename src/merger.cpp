@@ -71,5 +71,9 @@ void Merger::process(MergerJob const & job) {
 
     idsForTokens(tf);
 
+
     Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
+
+    processedBytes_ += tf->stats.bytes();
+    ++processedFiles_;
 }

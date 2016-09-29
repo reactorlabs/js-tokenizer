@@ -12,7 +12,7 @@ std::ostream & operator << (std::ostream & s, WriterJob const & job) {
 std::string Writer::outputDir_;
 
 Writer::Writer(unsigned index):
-    QueueWorker<WriterJob>(STR("WRITER " << index)) {
+    QueueProcessor<WriterJob>(STR("WRITER " << index)) {
     openStreamAndCheck(files_, STR(outputDir_ << "/" << PATH_STATS_FILE << "/" << STATS_FILE << index << STATS_FILE_EXT));
     openStreamAndCheck(projs_, STR(outputDir_ << "/" << PATH_BOOKKEEPING_PROJS << "/" << BOOKKEEPING_PROJS << index << BOOKKEEPING_PROJS_EXT));
     openStreamAndCheck(tokens_, STR(outputDir_ << "/" << PATH_TOKENS_FILE << "/" << TOKENS_FILE << index << TOKENS_FILE_EXT));
@@ -65,6 +65,10 @@ void Writer::process(WriterJob const & job) {
     // finally check if the project should be written as well
     if (job.writeProject)
         job.file->project()->writeTo(projs_);
+
+    processedBytes_ += job.file->stats.bytes();
+    ++processedFiles_;
+
     // finally delete the file
     delete job.file;
 }

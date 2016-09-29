@@ -30,10 +30,10 @@ struct TokenizerJob {
     friend std::ostream & operator << (std::ostream & s, TokenizerJob const & job);
 };
 
-class Tokenizer: public QueueWorker<TokenizerJob> {
+class Tokenizer: public QueueProcessor<TokenizerJob> {
 public:
     Tokenizer(unsigned index):
-        QueueWorker<TokenizerJob>(STR("TOKENIZER " << index)) {
+        QueueProcessor<TokenizerJob>(STR("TOKENIZER " << index)) {
     }
 
     static void initializeWorkers(unsigned num);

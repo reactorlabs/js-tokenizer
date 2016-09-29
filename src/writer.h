@@ -38,7 +38,7 @@ struct WriterJob {
     friend std::ostream & operator << (std::ostream & s, WriterJob const & job);
 };
 
-class Writer: public QueueWorker<WriterJob> {
+class Writer: public QueueProcessor<WriterJob> {
 public:
     Writer(unsigned index);
 

@@ -19,7 +19,7 @@ struct MergerJob {
 
 };
 
-class Merger: public QueueWorker<MergerJob> {
+class Merger: public QueueProcessor<MergerJob> {
 public:
     enum class StopClones {
         none,
@@ -28,7 +28,7 @@ public:
     };
 
     Merger(unsigned index):
-        QueueWorker<MergerJob>(STR("MERGER " << index)) {
+        QueueProcessor<MergerJob>(STR("MERGER " << index)) {
     }
 
     static void initializeWorkers(unsigned num);

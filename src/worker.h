@@ -3,6 +3,7 @@
 #include <condition_variable>
 #include <queue>
 #include <vector>
+#include <atomic>
 
 #include "utils.h"
 
@@ -127,6 +128,7 @@ protected:
         Schedule(job);
     }
 
+
 private:
     /** This is where all the magic happens.
 
@@ -204,4 +206,36 @@ std::condition_variable QueueWorker<JOB>::cv_;
 
 template<typename JOB>
 std::queue<JOB> QueueWorker<JOB>::jobs_;
+
+template<typename JOB>
+class QueueProcessor : public QueueWorker<JOB> {
+public:
+
+    static unsigned ProcessedFiles() {
+        return processedFiles_;
+    }
+
+    static unsigned ProcessedBytes() {
+        return processedBytes_;
+    }
+
+    static double ProcessedMBytes() {
+        return processedBytes_ / 1048576.0;
+    }
+
+
+protected:
+    QueueProcessor(std::string const & name):
+        QueueWorker<JOB>(name) {
+    }
+
+    static std::atomic_uint processedFiles_;
+    static std::atomic_uint processedBytes_;
+};
+
+template<typename JOB>
+std::atomic_uint QueueProcessor<JOB>::processedFiles_;
+
+template<typename JOB>
+std::atomic_uint QueueProcessor<JOB>::processedBytes_;
 

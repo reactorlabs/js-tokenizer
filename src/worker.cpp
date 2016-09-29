@@ -9,10 +9,10 @@ thread_local Worker * Worker::worker_ = nullptr;
 
 
 std::ostream & operator << (std::ostream & s, Worker::Stats const & stats) {
-    s << "active " << std::setw(3) << stats.activeThreads
-      << "queue " << std::setw(8) << stats.queueSize
-      << "done " << std::setw(10) << stats.jobsDone
-      << "errors " << std::setw(8) << stats.errors;
+    s << "active " << std::setw(2) << stats.activeThreads
+      << " queue " << std::setw(8) << stats.queueSize
+      << " done " << std::setw(9) << stats.jobsDone
+      << " errors " << std::setw(0) << stats.errors;
     return s;
 }
 

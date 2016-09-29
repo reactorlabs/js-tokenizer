@@ -3,6 +3,7 @@
 #include <string>
 #include <cassert>
 #include <sstream>
+#include <chrono>
 
 /** Shorthand for converting different types to string as long as they support the std::ostream << operator.
 */
@@ -47,3 +48,12 @@ inline bool isLanguageFile(std::string const & filename) {
     return endsWith(filename, ".js");
 
 }
+
+
+double secondsSince(std::chrono::high_resolution_clock::time_point start);
+
+/** Nice time printer.
+ */
+std::string time(double sec);
+
+
