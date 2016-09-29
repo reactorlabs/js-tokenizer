@@ -19,13 +19,14 @@ void Validator::DisplayStats(double duration) {
 
     std::cout << "Active threads " << Worker::NumActiveThreads() << std::endl << std::endl;
 
-    std::cout << "Identical  " << identical_ << std::endl;
-    std::cout << "Whitespace " << whitespaceDifferent_ << std::endl;
-    std::cout << "Comments   " << commentDifferent_ << std::endl;
-    std::cout << "Separator  " << separatorDifferent_ << std::endl;
-    std::cout << "Errors     " << errors_ << std::endl;
-
     unsigned total = identical_ + whitespaceDifferent_ + commentDifferent_ + separatorDifferent_ + errors_;
+
+    std::cout << "Identical  " << identical_ << pct(identical_, total) << std::endl;
+    std::cout << "Whitespace " << whitespaceDifferent_ << pct(whitespaceDifferent_, total) << std::endl;
+    std::cout << "Comments   " << commentDifferent_ << pct(commentDifferent_, total) << std::endl;
+    std::cout << "Separator  " << separatorDifferent_ << pct(separatorDifferent_, total) << std::endl;
+    std::cout << "Errors     " << errors_ << pct(errors_, total) << std::endl;
+
 
     std::cout << "Finished   " << total << pct(total, CloneInfo::numClones()) << std::endl;
 
