@@ -131,6 +131,9 @@ public:
      */
     void writeSourcererFormat(std::ostream & s);
 
+    unsigned size() const {
+        return freqs_.size();
+    }
 
 private:
     friend class TokenizedFile;
@@ -193,6 +196,7 @@ public:
 
 
     unsigned totalTokens = 0;
+    unsigned uniqueTokens_ = 0;
     unsigned errors = 0;
 
 
@@ -220,7 +224,6 @@ private:
     unsigned commentLoc_ = 0;
     unsigned emptyLoc_ = 0;
 
-    unsigned uniqueTokens_ = 0;
 
 
     std::string fileHash_;

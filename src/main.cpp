@@ -70,14 +70,17 @@ void tokenize(int argc, char * argv[]) {
     Crawler::SetQueueLimit(1000);
     Tokenizer::SetQueueLimit(1000);
 
+
     Crawler::initializeWorkers(2);
     Tokenizer::initializeWorkers(8);
     Merger::initializeWorkers(3);
     Writer::initializeOutputDirectory("processed");
     Writer::initializeWorkers(1);
+
     do {
         displayStats(secondsSince(start));
     } while (not Worker::WaitForFinished(1000));
+
     displayStats(secondsSince(start));
     std::cout << cursorDown(15);
     Worker::Log("ALL DONE");

@@ -51,6 +51,7 @@ void Writer::openStreamAndCheck(std::ofstream & s, std::string const & filename)
 
 void Writer::process(WriterJob const & job) {
     // always output full stats
+    job.file->stats.uniqueTokens_ = job.file->tokens.size();
     job.file->stats.writeFullStats(fullStats_);
     // if not empty and not clone, output sourcererCC's info
     if (not job.file->empty()) {

@@ -127,10 +127,6 @@ public:
      */
     void operator () () {
         Worker::Log("Started...");
-        // bump up the number of active threads
-        m_.lock();
-        activate();
-        m_.unlock();
         while (true) {
             JOB job = getJob();
             processAndCheck(job);
@@ -156,6 +152,10 @@ public:
 protected:
     QueueWorker(std::string const & name):
         Worker(name) {
+        // bump up the number of active threads
+        m_.lock();
+        activate();
+        m_.unlock();
     }
 
     /** Internal scheduler.
