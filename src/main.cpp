@@ -74,7 +74,7 @@ void tokenize(int argc, char * argv[]) {
     Crawler::initializeWorkers(2);
     Tokenizer::initializeWorkers(8);
     Merger::initializeWorkers(3);
-    Writer::initializeOutputDirectory("processed");
+    Writer::initializeOutputDirectory("/home/peta/sourcerer/processed/jakub2_fixed");
     Writer::initializeWorkers(1);
 
     do {

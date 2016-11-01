@@ -62,7 +62,6 @@ void Tokenizer::tokenize(GitProject * project, std::string const & relPath) {
     // TODO deal with different tokenizers being selectable programatically
     TokenizedFile * tf = new TokenizedFile(project, relPath);
     Worker::Log(STR("tokenizing " << tf->absPath()));
-    Worker::Print(STR("tokenizing " << tf->absPath()));
     JSTokenizer::tokenize(tf);
 
     processedBytes_ += tf->stats.bytes();

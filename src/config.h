@@ -5,27 +5,6 @@
  */
 #define NUM_CORES 4
 
-/** Default output path.
- */
-#define PATH_OUTPUT "processed"
-
-// 00:42
-// 43.83
-
-/*
-
-ordered map: 00:42 - 43.83 mbps
-
-unordered    00:29 - 63.16 mbps
-
-all unordered 00:26 - 68.56 mbps
-
-two mergers 00:20 - 91.35 mbps
-
-three mergers 00:18 - 97.56 mbps
-
-*/
-
 /** Default directory names for the output files.
 
   This is taken from sourcererCC's tokenizer config names, where appropriate. We also introduce couple of our names. See their usage for better description.
