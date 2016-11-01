@@ -178,14 +178,17 @@ void JSTokenizer::numericLiteral() {
     // check if it is hex number
     if (top() == '0') {
         if (peek(1) == 'x' or peek(1) == 'X') {
+            pop(2);
             while(not eof() and isHexDigit(top()))
                 pop(1);
             addToken(start);
         } else if (peek(1) == 'o' or peek(1) == 'O') {
+            pop(2);
             while(not eof() and isOctDigit(top()))
                 pop(1);
             addToken(start);
         } else if (peek(1) == 'b' or peek(1) == 'B') {
+            pop(2);
             while(not eof() and isBinDigit(top()))
                 pop(1);
             addToken(start);

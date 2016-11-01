@@ -59,8 +59,11 @@ void displayStats(double duration) {
 
 
 void tokenize(int argc, char * argv[]) {
-    Crawler::Schedule(CrawlerJob("/mnt/data1/data70k"));
-    Crawler::Schedule(CrawlerJob("/mnt/data2/data70k2"));
+    Crawler::Schedule(CrawlerJob("/home/peta/sourcerer/data/jakub2"));
+
+
+    //Crawler::Schedule(CrawlerJob("/mnt/data1/data70k"));
+    //Crawler::Schedule(CrawlerJob("/mnt/data2/data70k2"));
 
     start = std::chrono::high_resolution_clock::now();
 
@@ -121,8 +124,11 @@ void process(int argc, char * argv[]) {
 
 int main(int argc, char * argv[]) {
     try {
+        tokenize(argc, argv);
+
+
         //tokenize(argc, argv);
-        validate(argc, argv);
+        //validate(argc, argv);
 /*        FileStats::parseFile("/home/peta/delete/files-0.txt");
         std::cout << "Parsed " << FileStats::numFiles() << " files" << std::endl;
 
