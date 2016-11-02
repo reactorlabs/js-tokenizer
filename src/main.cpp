@@ -84,7 +84,7 @@ void tokenize(int argc, char * argv[]) {
     displayStats(secondsSince(start));
     std::cout << cursorDown(15);
     Worker::Log("ALL DONE");
-    std::ofstream tokens("processed/tokens.txt");
+    std::ofstream tokens("/home/peta/sourcerer/processed/jakub2_fixed/tokens.txt");
     Merger::writeGlobalTokens(tokens);
 }
 

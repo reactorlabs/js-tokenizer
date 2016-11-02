@@ -193,12 +193,13 @@ void JSTokenizer::numericLiteral() {
                 pop(1);
             addToken(start);
         }
+    } else {
+        while (not eof() and isDecDigit(top()))
+            pop(1);
+        numericLiteralFloatingPointPart();
+        numericLiteralExponentPart();
+        addToken(start);
     }
-    while (not eof() and isDecDigit(top()))
-        pop(1);
-    numericLiteralFloatingPointPart();
-    numericLiteralExponentPart();
-    addToken(start);
 }
 
 
