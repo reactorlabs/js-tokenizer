@@ -30,6 +30,7 @@ void Merger::writeGlobalTokens(std::ostream & s) {
     for (auto i : uniqueTokenIds_) {
         s << i.second.id << ","
           << i.second.count << ","
+          << i.first.size() << ","
           << escapeToken(i.first) << std::endl;
     }
 }

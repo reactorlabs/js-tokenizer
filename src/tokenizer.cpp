@@ -10,6 +10,10 @@
 //#include "tokenizers/generic.h"
 
 
+unsigned fileTimestamp(std::string const & file, std::string const & path) {
+    return std::atoi(exec(STR("git log --diff-filter=A --pretty=format:\"%at\" -- \"" << file << "\""), path).c_str());
+}
+
 
 
 std::ostream & operator << (std::ostream & s, TokenizerJob const & job) {
@@ -63,6 +67,8 @@ void Tokenizer::tokenize(GitProject * project, std::string const & relPath) {
     TokenizedFile * tf = new TokenizedFile(project, relPath);
     Worker::Log(STR("tokenizing " << tf->absPath()));
     JSTokenizer::tokenize(tf);
+
+    tf->stats.createdDate = fileTimestamp(relPath, project->path());
 
     processedBytes_ += tf->stats.bytes();
     ++processedFiles_;

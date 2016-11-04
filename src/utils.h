@@ -46,6 +46,8 @@ inline bool endsWith(std::string const & str, std::string const & suffix) {
 
 inline bool isLanguageFile(std::string const & filename) {
     // TODO add min.js as well, and basically, make configurable...
+    if (endsWith(filename, ".min.js")) // ignore minjs
+        return false;
     return endsWith(filename, ".js");
 
 }
@@ -61,3 +63,6 @@ inline std::string pct(unsigned x, unsigned total) {
     return STR(" (" << (x * 100.0 / total) <<"%)");
 }
 
+/** Execute command and grab its output.
+ */
+std::string exec(std::string const & what, std::string const & path);

@@ -3,7 +3,7 @@
 /** Number of cpu cores.
 
  */
-#define NUM_CORES 4
+#define NUM_CORES 16
 
 /** Default directory names for the output files.
 

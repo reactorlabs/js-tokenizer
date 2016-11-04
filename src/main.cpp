@@ -16,6 +16,17 @@ std::chrono::high_resolution_clock::time_point start;
 std::chrono::high_resolution_clock::time_point end;
 
 
+
+
+void help() {
+    std::cout << "This should be helpful..." << std::endl;
+
+
+
+}
+
+
+
 void displayStats(double duration) {
     Worker::Stats c = Crawler::Statistic();
     Worker::Stats t = Tokenizer::Statistic();
@@ -59,7 +70,17 @@ void displayStats(double duration) {
 
 
 void tokenize(int argc, char * argv[]) {
-    Crawler::Schedule(CrawlerJob("/home/peta/sourcerer/data/jakub2"));
+    if (argc < 2) {
+        help();
+        throw STR("Invalid number of arguments");
+    }
+
+    std::string outdir = argv[2];
+
+    for (unsigned i = 3; i < argc; ++i)
+        Crawler::Schedule(CrawlerJob(argv[i]));
+
+
 
 
     //Crawler::Schedule(CrawlerJob("/mnt/data1/data70k"));
@@ -72,9 +93,9 @@ void tokenize(int argc, char * argv[]) {
 
 
     Crawler::initializeWorkers(2);
-    Tokenizer::initializeWorkers(8);
+    Tokenizer::initializeWorkers(32);
     Merger::initializeWorkers(3);
-    Writer::initializeOutputDirectory("/home/peta/sourcerer/processed/jakub2_fixed");
+    Writer::initializeOutputDirectory(outdir);
     Writer::initializeWorkers(1);
 
     do {
@@ -84,7 +105,7 @@ void tokenize(int argc, char * argv[]) {
     displayStats(secondsSince(start));
     std::cout << cursorDown(15);
     Worker::Log("ALL DONE");
-    std::ofstream tokens("/home/peta/sourcerer/processed/jakub2_fixed/tokens.txt");
+    std::ofstream tokens(STR(outdir << "/tokens.txt"));
     Merger::writeGlobalTokens(tokens);
 }
 
@@ -118,18 +139,25 @@ void process(int argc, char * argv[]) {
 
 }
 
-
-
-
-
-
-
-
 int main(int argc, char * argv[]) {
     try {
-        tokenize(argc, argv);
-
-
+        if (argc < 2) {
+            help();
+            throw STR("Invalid number of arguments");
+        }
+        std::string cmd = argv[1];
+        if (cmd == "help" or cmd == "--help" or cmd == "-h") {
+            help();
+        } else if (cmd == "tokenize" or cmd == "--tokenize" or cmd == "-t") {
+            tokenize(argc, argv);
+        } else if (cmd == "validate" or cmd == "--validate" or cmd == "-v") {
+            validate(argc, argv);
+        } else if (cmd == "process" or cmd == "--process" or cmd == "-p") {
+            process(argc, argv);
+        } else {
+            help();
+            throw STR("Invalid command " << cmd);
+        }
         //tokenize(argc, argv);
         //validate(argc, argv);
 /*        FileStats::parseFile("/home/peta/delete/files-0.txt");
@@ -156,3 +184,16 @@ int main(int argc, char * argv[]) {
     return EXIT_FAILURE;
 
 }
+
+// project
+
+// git rev-list --max-parents=0 HEAD | git log --stdin
+
+// file
+
+// git log --diff-filter=A -- src/utils.cpp
+
+
+// add --pretty=format:"%at"
+
+// to git log to get nice timestamp

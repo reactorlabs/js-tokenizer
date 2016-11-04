@@ -9,6 +9,12 @@ std::ostream & operator << (std::ostream & s, WriterJob const & job) {
     return s;
 }
 
+unsigned projectTimestamp(std::string const & path) {
+    return std::atoi(exec(STR("git --rev-list --max-parents=0 HEAD | git log --stdin --pretty=format:\"%at\""), path).c_str());
+}
+
+
+
 std::string Writer::outputDir_;
 
 Writer::Writer(unsigned index):

@@ -1,6 +1,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <memory>
+
 #include <iostream>
 #include <iomanip>
 #include <fstream>
@@ -104,7 +106,6 @@ std::vector<std::string> split(std::string const & what, char delimiter) {
 
 
 
-
 bool isDirectory(std::string const & path) {
     struct stat s;
     if (lstat(path.c_str(),&s) == 0 ) {
@@ -134,5 +135,20 @@ std::string time(double sec) {
     m = m % 60;
     return STR(h << ":" << std::setfill('0') << std::setw(2) << m << ":"  << std::setfill('0') << std::setw(2)<< s);
 }
+
+std::string exec(std::string const & what, std::string const & path ) {
+    char buffer[128];
+    std::string result = "";
+    std::string cmd = STR("cd \"" << path << "\" && " << what);
+    std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (not pipe)
+        throw STR("Unable to execute command " << cmd);
+    while (not feof(pipe.get())) {
+        if (fgets(buffer, 128, pipe.get()) != nullptr)
+            result += buffer;
+    }
+    return result;
+}
+
 
 

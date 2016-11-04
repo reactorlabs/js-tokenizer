@@ -199,6 +199,8 @@ public:
     unsigned uniqueTokens_ = 0;
     unsigned errors = 0;
 
+    unsigned createdDate;
+
 
 private:
     friend class TokenizedFile;

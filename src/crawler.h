@@ -7,6 +7,8 @@ struct CrawlerJob {
 
     CrawlerJob(std::string const & path):
         path(path) {
+        if (not isDirectory(path))
+            throw STR("Input directory " << path << " not found");
     }
 
     friend std::ostream & operator << (std::ostream & s, CrawlerJob const & job) {
