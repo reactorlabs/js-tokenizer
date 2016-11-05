@@ -20,9 +20,6 @@ std::chrono::high_resolution_clock::time_point end;
 
 void help() {
     std::cout << "This should be helpful..." << std::endl;
-
-
-
 }
 
 
@@ -80,17 +77,10 @@ void tokenize(int argc, char * argv[]) {
     for (unsigned i = 3; i < argc; ++i)
         Crawler::Schedule(CrawlerJob(argv[i]));
 
-
-
-
-    //Crawler::Schedule(CrawlerJob("/mnt/data1/data70k"));
-    //Crawler::Schedule(CrawlerJob("/mnt/data2/data70k2"));
-
     start = std::chrono::high_resolution_clock::now();
 
     Crawler::SetQueueLimit(1000);
     Tokenizer::SetQueueLimit(1000);
-
 
     Crawler::initializeWorkers(2);
     Tokenizer::initializeWorkers(32);

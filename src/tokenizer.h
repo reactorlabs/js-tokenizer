@@ -12,12 +12,6 @@ struct TokenizerJob {
         ++project->handles_;
     }
 
-    TokenizerJob(TokenizerJob const & job, std::string const & dir):
-        project(job.project),
-        relPath(job.relPath.empty() ? dir : (job.relPath + "/" + dir)) {
-        ++project->handles_;
-    }
-
     std::string absPath() const {
         if (relPath.empty())
             return project->path();
@@ -49,6 +43,6 @@ private:
 
     /** Tokenizes given file and schedules it for token identification and writing.
      */
-    void tokenize(GitProject * project, std::string const & relPath);
+    void tokenize(GitProject * project, std::string const & relPath, int cdate);
 
 };

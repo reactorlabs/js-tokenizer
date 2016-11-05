@@ -1,6 +1,7 @@
 #include <dirent.h>
 #include <cstring>
 #include <thread>
+#include <fstream>
 
 #include "tokenizer.h"
 #include "merger.h"
@@ -33,42 +34,43 @@ void Tokenizer::initializeWorkers(unsigned num) {
 
 
 
-
 void Tokenizer::process(TokenizerJob const & job) {
-    struct dirent * ent;
-    DIR * d = opendir(job.absPath().c_str());
-    assert(d != nullptr);
-    while ((ent = readdir(d)) != nullptr) {
-        // ignore symlinks
-        if (ent->d_type == DT_LNK)
-            continue;
-        // if it is file, check if it is language file and tokenize it
-        if (ent->d_type == DT_REG) {
-            if (isLanguageFile(ent->d_name))
-                tokenize(job.project, job.relPath.empty() ? ent->d_name : (job.relPath + "/" + ent->d_name));
-        // if it is directory, schedule for tokenization
-        } else if (ent->d_type == DT_DIR) {
-            if (strcmp(ent->d_name, ".") == 0 or strcmp(ent->d_name, "..") == 0)
-                continue;
-            // skip .git as we do not crawl it
-            if (strcmp(ent->d_name, ".git") == 0)
-                continue;
-            // schedule the job of tokenizing the directory
-            schedule(TokenizerJob(job, ent->d_name));
+    // first, check if the directory already contains the file with last dates
+    std::ifstream cdates(STR(job.absPath() <<  "/cdate.js.tokenizer.txt"));
+    // if the file does not exist, create it first
+    if (not cdates.good()) {
+        int result = system(STR("cd \"" << job.absPath() << "\" &&  git log --format=\"format:%at\" --name-only --diff-filter=A > cdate.js.tokenizer.txt").c_str());
+        if (result != EXIT_SUCCESS)
+            throw STR("Unable to get cdates for files in project directory " << job.absPath());
+        // reopen the file
+        cdates.open(STR(job.absPath() <<  "/cdate.js.tokenizer.txt"));
+    }
+    // let's parse the output now
+    int date = 0;
+    while (not cdates.eof()) {
+        std::string tmp;
+        std::getline(cdates, tmp, '\n');
+        if (tmp == "") { // if the line is empty, next line will be timestamp
+            date = 0;
+        } else if (date == 0) { // read timestamp
+            date = std::atoi(tmp.c_str());
+        } else { // all other lines are actual files
+            // TODO this should support multiple languages too
+            if (isLanguageFile(tmp))
+                tokenize(job.project, tmp, date);
         }
     }
-    closedir(d);
     // project bookkeeping, so that floating projects are deleted when all their files are written and they are no longer needed
     --job.project->handles_;
 }
 
-void Tokenizer::tokenize(GitProject * project, std::string const & relPath) {
+void Tokenizer::tokenize(GitProject * project, std::string const & relPath, int cdate) {
     // TODO deal with different tokenizers being selectable programatically
     TokenizedFile * tf = new TokenizedFile(project, relPath);
     Worker::Log(STR("tokenizing " << tf->absPath()));
     JSTokenizer::tokenize(tf);
 
-    tf->stats.createdDate = fileTimestamp(relPath, project->path());
+    tf->stats.createdDate = cdate;
 
     processedBytes_ += tf->stats.bytes();
     ++processedFiles_;
