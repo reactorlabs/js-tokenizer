@@ -103,6 +103,11 @@ private:
     static std::unordered_map<std::string, TokenInfo> uniqueTokenIds_;
 
 
+    /** Mutex guarding access to clone database.
+     */
+    static std::mutex accessC_;
+
+
     static std::mutex accessM_;
 
     static std::atomic_uint numClones_;

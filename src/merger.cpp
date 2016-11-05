@@ -24,6 +24,7 @@ Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
 std::unordered_map<std::string, Merger::CloneInfo> Merger::clones_;
 std::unordered_map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
 
+std::mutex Merger::accessC_;
 std::mutex Merger::accessM_;
 
 std::atomic_uint Merger::numClones_(0);
@@ -53,15 +54,14 @@ Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
     if (stopClones_ == StopClones::none)
         return CloneInfo();
     std::string const & hash = stopClones_ == StopClones::file ? tf->stats.fileHash() : tf->stats.tokensHash();
-    accessM_.lock();
+    accessC_.lock();
     auto i = clones_.find(hash);
-    accessM_.unlock();
     if (i == clones_.end()) {
-        accessM_.lock();
         clones_[hash] = CloneInfo(tf->pid(), tf->id());
-        accessM_.unlock();
+        accessC_.unlock();
         return CloneInfo();
     } else {
+        accessC_.unlock();
         ++numClones_;
         Writer::Log("clone");
         return i->second;
