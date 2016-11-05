@@ -111,6 +111,7 @@ void FileStats::writeFullStats(std::ostream & s) {
       << project_->id_ << ","
       << escapePath(project_->path()) << ","
       << escapePath(relPath_) << ","
+      << escapePath(githubUrl()) << ","
       << createdDate << ","
       << bytes_ << ","
       << commentBytes_ << ","
