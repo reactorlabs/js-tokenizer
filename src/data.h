@@ -20,6 +20,8 @@ constexpr unsigned PROJECT_ID_STARTS_AT = 1;
  */
 class GitProject {
 public:
+
+
     static void parseFile(std::string const & filename);
 
     static GitProject * Get(size_t id) {
@@ -27,7 +29,6 @@ public:
         assert(id < projects_.size());
         return projects_[id];
     }
-
 
     std::string const & path() const {
         return path_;
@@ -151,6 +152,12 @@ private:
 
 class FileStats {
 public:
+    static int objects(int increment = 0) {
+        static unsigned objects = 0;
+        objects += increment;
+        return objects;
+    }
+
     static void parseFile(std::string const & filename);
 
     static FileStats * get(size_t id) {

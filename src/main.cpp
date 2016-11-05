@@ -57,9 +57,9 @@ void displayStats(double duration) {
               << std::setw(8) << (Writer::ProcessedMBytes() / duration) << " writer [MB/s]"
               << std::endl << std::endl;
 
-    std::cout << "Unique tokens   " << Merger::NumUniqueTokens() << std::endl;
-    std::cout << "Empty files     " << Merger::NumEmptyFiles() << pct(Merger::NumEmptyFiles(), Merger::ProcessedFiles()) << std::endl;
-    std::cout << "Detected clones " << Merger::NumClones() << pct(Merger::NumClones(), Merger::ProcessedFiles()) << std::endl;
+    std::cout << "Unique tokens     " << Merger::NumUniqueTokens() << std::endl;
+    std::cout << "Empty files       " << Merger::NumEmptyFiles() << pct(Merger::NumEmptyFiles(), Merger::ProcessedFiles()) << std::endl;
+    std::cout << "Detected clones   " << Merger::NumClones() << pct(Merger::NumClones(), Merger::ProcessedFiles()) << std::endl;
     std::cout << cursorUp(15);
     Worker::UnlockOutput();
 }
@@ -79,12 +79,15 @@ void tokenize(int argc, char * argv[]) {
 
     start = std::chrono::high_resolution_clock::now();
 
-    Crawler::SetQueueLimit(1000);
-    Tokenizer::SetQueueLimit(1000);
+    Crawler::SetQueueLimit(10000);
+    Tokenizer::SetQueueLimit(10000);
+    Merger::SetQueueLimit(10000);
+    Writer::SetQueueLimit(10000);
 
-    Crawler::initializeWorkers(2);
-    Tokenizer::initializeWorkers(32);
-    Merger::initializeWorkers(3);
+
+    Crawler::initializeWorkers(8);
+    Tokenizer::initializeWorkers(8);
+    Merger::initializeWorkers(8);
     Writer::initializeOutputDirectory(outdir);
     Writer::initializeWorkers(1);
 

@@ -117,8 +117,23 @@ private:
 template<typename JOB>
 class QueueWorker : public Worker {
 public:
+    /** External scheduling.
+        std::unique_lock<std::mutex> g(m_);
+        while (jobs_.empty()) {
+            deactivate();
+            cv_.wait(g);
+            activate();
+        }
+        JOB result = jobs_.front();
+        jobs_.pop();
+        return result;
+
+      Blocks if the queue is too large and only adds the request when done.
+     */
     static void Schedule(JOB const & job) {
-        std::lock_guard<std::mutex> g(m_);
+        std::unique_lock<std::mutex> g(m_);
+        while (jobs_.size() > queueLimit_)
+            canAdd_.wait(g);
         jobs_.push(job);
         cv_.notify_one();
     }
@@ -225,6 +240,8 @@ private:
         }
         JOB result = jobs_.front();
         jobs_.pop();
+        if (jobs_.size() < queueLimit_)
+            canAdd_.notify_all();
         return result;
     }
 
@@ -233,6 +250,7 @@ private:
     static unsigned errors_;
     static std::mutex m_;
     static std::condition_variable cv_;
+    static std::condition_variable canAdd_;
     static std::queue<JOB> jobs_;
 
     static unsigned queueLimit_;
@@ -252,6 +270,9 @@ std::mutex QueueWorker<JOB>::m_;
 
 template<typename JOB>
 std::condition_variable QueueWorker<JOB>::cv_;
+
+template<typename JOB>
+std::condition_variable QueueWorker<JOB>::canAdd_;
 
 template<typename JOB>
 std::queue<JOB> QueueWorker<JOB>::jobs_;
