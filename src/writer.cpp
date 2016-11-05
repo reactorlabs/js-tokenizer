@@ -4,16 +4,15 @@
 
 #include "writer.h"
 
+std::atomic_uint Writer::fid_(FILE_ID_STARTS_AT);
+std::atomic_uint Writer::pid_(PROJECT_ID_STARTS_AT);
+
+
+
 std::ostream & operator << (std::ostream & s, WriterJob const & job) {
     s << job.file->absPath();
     return s;
 }
-
-unsigned projectTimestamp(std::string const & path) {
-    return std::atoi(exec(STR("git --rev-list --max-parents=0 HEAD | git log --stdin --pretty=format:\"%at\""), path).c_str());
-}
-
-
 
 std::string Writer::outputDir_;
 
@@ -56,9 +55,17 @@ void Writer::openStreamAndCheck(std::ofstream & s, std::string const & filename)
 
 
 void Writer::process(WriterJob const & job) {
+    bool writeProject = false;
+    job.file->setId(fid_++);
+    if (job.file->pid() == 0) {
+        job.file->setPid(pid_++);
+        writeProject = true;
+    }
+
     // always output full stats
     job.file->stats.uniqueTokens_ = job.file->tokens.size();
     job.file->stats.writeFullStats(fullStats_);
+
     // if not empty and not clone, output sourcererCC's info
     if (not job.file->empty()) {
         if (not job.isClone()) {
@@ -70,7 +77,7 @@ void Writer::process(WriterJob const & job) {
         }
     }
     // finally check if the project should be written as well
-    if (job.writeProject)
+    if (writeProject)
         job.file->project()->writeTo(projs_);
 
     processedBytes_ += job.file->stats.bytes();

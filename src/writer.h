@@ -10,8 +10,6 @@ struct WriterJob {
     unsigned originalPid;
     unsigned originalFid;
 
-    bool writeProject;
-
     bool isClone() const {
         return originalPid != 0 and originalFid != 0;
     }
@@ -19,18 +17,16 @@ struct WriterJob {
     static_assert(FILE_ID_STARTS_AT > 0, "0 means not initialized");
     static_assert(PROJECT_ID_STARTS_AT > 0, "0 means not initialized");
 
-    WriterJob(TokenizedFile * file, bool writeProject = false):
+    WriterJob(TokenizedFile * file):
         file(file),
         originalPid(0),
-        originalFid(0),
-        writeProject(writeProject) {
+        originalFid(0) {
     }
 
-    WriterJob(TokenizedFile * file, bool writeProject, unsigned pid, unsigned fid):
+    WriterJob(TokenizedFile * file, unsigned pid, unsigned fid):
         file(file),
         originalPid(pid),
-        originalFid(fid),
-        writeProject(writeProject) {
+        originalFid(fid) {
     }
 
 
@@ -65,6 +61,13 @@ private:
     std::ofstream fullStats_;
 
     static std::string outputDir_;
+
+
+    // TODO These do not have to be atomics if writer locks properly
+    static std::atomic_uint fid_;
+    static std::atomic_uint pid_;
+
+
 
 };
 

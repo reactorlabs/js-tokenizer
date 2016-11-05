@@ -96,9 +96,6 @@ private:
 
 
 
-    static std::atomic_uint fid_;
-    static std::atomic_uint pid_;
-
     static StopClones stopClones_;
     static std::unordered_map<std::string, CloneInfo> clones_;
 

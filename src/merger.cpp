@@ -3,8 +3,22 @@
 #include "merger.h"
 #include "writer.h"
 
-std::atomic_uint Merger::fid_(FILE_ID_STARTS_AT);
-std::atomic_uint Merger::pid_(PROJECT_ID_STARTS_AT);
+
+/** Possible merger speedups:
+
+
+ - move pid assignment to writer
+
+ - since tokenizer is linear now, only first file writes the project
+
+ - pay price only when adding new token
+
+
+
+
+
+
+ */
 
 Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
 std::unordered_map<std::string, Merger::CloneInfo> Merger::clones_;
@@ -71,13 +85,6 @@ void Merger::idsForTokens(TokenizedFile * tf) {
 void Merger::process(MergerJob const & job) {
     bool writeProject = false;
     TokenizedFile * tf = job.file;
-    tf->setId(fid_++);
-    accessM_.lock();
-    if (tf->pid() == 0) {
-        tf->setPid(pid_++);
-        writeProject = true;
-    }
-    accessM_.unlock();
 
     idsForTokens(tf);
 
@@ -95,6 +102,6 @@ void Merger::process(MergerJob const & job) {
     if (tf->stats.totalTokens == 0)
         ++numEmptyFiles_;
 
-    Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
+    Writer::Schedule(WriterJob(job.file, ci.pid, ci.fid));
 
 }
