@@ -111,6 +111,10 @@ public:
     typedef std::map<std::string, unsigned>::const_iterator const_iterator;
     typedef std::map<std::string, unsigned>::iterator iterator;
 
+    void clear() {
+        freqs_.clear();
+    }
+
     const_iterator begin() const {
         return freqs_.begin();
     }

@@ -41,8 +41,8 @@ public:
     }
 
     static unsigned NumUniqueTokens() {
-        std::lock_guard<std::mutex> g(accessM_);
-        return uniqueTokenIds_.size();
+        //std::lock_guard<std::mutex> g(accessM_);
+        return tokenIds_.size();
     }
 
     static unsigned NumEmptyFiles() {
@@ -68,7 +68,7 @@ private:
             fid(fid) {
         }
     };
-
+/*
     struct TokenInfo {
         unsigned id;
         unsigned count;
@@ -83,14 +83,26 @@ private:
             return *this;
         }
 
-    };
+    }; */
 
     CloneInfo checkClones(TokenizedFile * tf);
 
     /** Changes the tokens in the file into global identifiers.
      */
-    void idsForTokens(TokenizedFile * tf);
+    //void idsForTokens(TokenizedFile * tf);
 
+
+
+    void lockTokenIdRead();
+    void unlockTokenIdRead();
+    void lockTokenIdWrite();
+    void unlockTokenIdWrite();
+
+    void lockCounts();
+    void unlockCounts();
+
+
+    void tokensToIds(TokenizedFile * tf);
 
     void process(MergerJob const & job) override;
 
@@ -100,15 +112,21 @@ private:
     static std::unordered_map<std::string, CloneInfo> clones_;
 
 
-    static std::unordered_map<std::string, TokenInfo> uniqueTokenIds_;
+    static std::unordered_map<std::string, unsigned> tokenIds_;
+
+    static std::vector<unsigned> tokenCounts_;
+
+
+    //static std::unordered_map<std::string, TokenInfo> uniqueTokenIds_;
 
 
     /** Mutex guarding access to clone database.
      */
     static std::mutex accessC_;
 
+    static std::mutex accessTid_;
 
-    static std::mutex accessM_;
+    static std::mutex accessTc_;
 
     static std::atomic_uint numClones_;
 
