@@ -108,12 +108,19 @@ std::vector<std::string> split(std::string const & what, char delimiter) {
 
 bool isDirectory(std::string const & path) {
     struct stat s;
-    if (lstat(path.c_str(),&s) == 0 ) {
-        if( s.st_mode & S_IFDIR )
-            return true;
-    }
+    if (lstat(path.c_str(),&s) == 0)
+        return S_ISDIR(s.st_mode);
     return false;
 }
+
+bool isFile(std::string const & path) {
+    struct stat s;
+    if (lstat(path.c_str(),&s) == 0)
+        return S_ISREG(s.st_mode);
+    return false;
+}
+
+
 
 void createDirectory(std::string const & path) {
     if (system(STR("mkdir -p " << path).c_str()) != EXIT_SUCCESS)

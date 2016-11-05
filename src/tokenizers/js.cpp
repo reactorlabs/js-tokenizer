@@ -662,8 +662,14 @@ void JSTokenizer::convertUTF16le() {
 
 void JSTokenizer::loadEntireFile() {
     std::ifstream s(f_.absPath(), std::ios::in | std::ios::binary);
-    if (not s.good())
-        throw STR("Unable to open file " << f_.absPath());
+    if (not s.good()) {
+        Worker::Warning(STR("Resetting git for project " << f_.project()->path()));
+        if (system(STR("cd \"" << f_.project()->path() << "\" && git reset --hard").c_str()) != EXIT_SUCCESS)
+            throw STR("Unable to reset project " << f_.project()->path());
+        s.open(f_.absPath(), std::ios::in | std::ios::binary);
+        if (not s.good())
+            throw STR("Unable to open file " << f_.absPath());
+    }
     s.seekg(0, std::ios::end);
     data_.resize(s.tellg());
     s.seekg(0, std::ios::beg);

@@ -107,6 +107,8 @@ private:
     void process(MergerJob const & job) override;
 
 
+    static std::atomic_uint fid_;
+    static unsigned pid_;
 
     static StopClones stopClones_;
     static std::unordered_map<std::string, CloneInfo> clones_;
@@ -127,6 +129,9 @@ private:
     static std::mutex accessTid_;
 
     static std::mutex accessTc_;
+
+    /** Project id settings mutex guard */
+    static std::mutex accessPid_;
 
     static std::atomic_uint numClones_;
 

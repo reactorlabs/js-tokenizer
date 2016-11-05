@@ -203,7 +203,6 @@ void CloneInfo::parseFile(std::string const & filename) {
     }
 }
 
-
 void CloneInfo::loadFrom(std::string const & tmp) {
     std::vector<std::string> items(split(tmp, ','));
     try {

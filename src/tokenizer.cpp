@@ -11,9 +11,6 @@
 //#include "tokenizers/generic.h"
 
 
-unsigned fileTimestamp(std::string const & file, std::string const & path) {
-    return std::atoi(exec(STR("git log --diff-filter=A --pretty=format:\"%at\" -- \"" << file << "\""), path).c_str());
-}
 
 
 
@@ -67,14 +64,17 @@ void Tokenizer::process(TokenizerJob const & job) {
 void Tokenizer::tokenize(GitProject * project, std::string const & relPath, int cdate) {
     // TODO deal with different tokenizers being selectable programatically
     TokenizedFile * tf = new TokenizedFile(project, relPath);
-    Worker::Log(STR("tokenizing " << tf->absPath()));
-    JSTokenizer::tokenize(tf);
+    if (isFile(tf->absPath())) {
+        Worker::Log(STR("tokenizing " << tf->absPath()));
+        JSTokenizer::tokenize(tf);
 
-    tf->stats.createdDate = cdate;
+        tf->stats.createdDate = cdate;
 
-    processedBytes_ += tf->stats.bytes();
-    ++processedFiles_;
+        processedBytes_ += tf->stats.bytes();
+        ++processedFiles_;
 
-    Merger::Schedule(MergerJob(tf));
-
+        Merger::Schedule(MergerJob(tf));
+    } else {
+        delete tf;
+    }
 }

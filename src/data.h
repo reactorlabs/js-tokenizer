@@ -44,7 +44,7 @@ public:
     }
 
     void writeTo(std::ostream & s) {
-        s << id_ << "," << path() << "," << githubUrl() << std::endl;
+        s << id_ << "," << escapePath(path()) << "," << escapePath(githubUrl()) << std::endl;
     }
 
     GitProject():

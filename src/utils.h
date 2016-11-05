@@ -31,6 +31,7 @@ std::string loadEntireFile(std::string const & filename);
 std::vector<std::string> split(std::string const & what, char delimiter);
 
 bool isDirectory(std::string const & path);
+bool isFile(std::string const & path);
 
 void createDirectory(std::string const & path);
 
@@ -46,8 +47,8 @@ inline bool endsWith(std::string const & str, std::string const & suffix) {
 
 inline bool isLanguageFile(std::string const & filename) {
     // TODO add min.js as well, and basically, make configurable...
-    if (endsWith(filename, ".min.js")) // ignore minjs
-        return false;
+    //if (endsWith(filename, ".min.js")) // ignore minjs
+    //    return false;
     return endsWith(filename, ".js");
 
 }

@@ -20,19 +20,24 @@
 
  */
 
+std::atomic_uint Merger::fid_(FILE_ID_STARTS_AT);
+unsigned Merger::pid_(PROJECT_ID_STARTS_AT);
+
+
 Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
 std::unordered_map<std::string, Merger::CloneInfo> Merger::clones_;
 //std::unordered_map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
 
 
 std::unordered_map<std::string, unsigned> Merger::tokenIds_;
-std::vector<unsigned> Merger::tokenCounts_;
+std::vector<unsigned> Merger::tokenCounts_(1024);
 
 
 
 std::mutex Merger::accessC_;
 std::mutex Merger::accessTid_;
 std::mutex Merger::accessTc_;
+std::mutex Merger::accessPid_;
 
 std::atomic_uint Merger::numClones_(0);
 std::atomic_uint Merger::numEmptyFiles_(0);
@@ -156,8 +161,10 @@ void Merger::tokensToIds(TokenizedFile * tf) {
     // only one thread can do this at a time
     lockCounts();
     // resize if needed
-    while (maxId >= tokenCounts_.size())
+    while (maxId >= tokenCounts_.size()) {
+        int x = tokenCounts_.size();
         tokenCounts_.resize(tokenCounts_.size() * 2);
+    }
     // update the counts
     for (auto i : matched)
         tokenCounts_[i.first] += i.second;
@@ -173,8 +180,21 @@ void Merger::tokensToIds(TokenizedFile * tf) {
 
 void Merger::process(MergerJob const & job) {
     TokenizedFile * tf = job.file;
+    bool writeProject = false;
 
+    // convert tokens to unique ids
     tokensToIds(tf);
+
+    // get file id's
+    tf->setId(fid_++);
+
+    // lock on project id's
+    accessPid_.lock();
+    if (tf->pid() ==0) {
+        tf->setPid(pid_++);
+        writeProject = true;
+    }
+    accessPid_.unlock();
 
     // calculate hash for the tokens and determine if the file is a clone of someone
     tf->calculateTokensHash();
@@ -189,5 +209,5 @@ void Merger::process(MergerJob const & job) {
         ++numEmptyFiles_;
 
     // schedule writing of the file
-    Writer::Schedule(WriterJob(job.file, ci.pid, ci.fid));
+    Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
 }

@@ -7,6 +7,8 @@
 struct WriterJob {
     TokenizedFile * file;
 
+    bool writeProject;
+
     unsigned originalPid;
     unsigned originalFid;
 
@@ -17,16 +19,17 @@ struct WriterJob {
     static_assert(FILE_ID_STARTS_AT > 0, "0 means not initialized");
     static_assert(PROJECT_ID_STARTS_AT > 0, "0 means not initialized");
 
-    WriterJob(TokenizedFile * file):
+/*    WriterJob(TokenizedFile * file):
         file(file),
         originalPid(0),
         originalFid(0) {
-    }
+    } */
 
-    WriterJob(TokenizedFile * file, unsigned pid, unsigned fid):
+    WriterJob(TokenizedFile * file, bool writeProject, unsigned pid, unsigned fid):
         file(file),
         originalPid(pid),
-        originalFid(fid) {
+        originalFid(fid),
+        writeProject(writeProject) {
     }
 
 
@@ -61,13 +64,6 @@ private:
     std::ofstream fullStats_;
 
     static std::string outputDir_;
-
-
-    // TODO These do not have to be atomics if writer locks properly
-    static std::atomic_uint fid_;
-    static std::atomic_uint pid_;
-
-
 
 };
 
