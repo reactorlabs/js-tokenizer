@@ -72,6 +72,12 @@ void tokenize(int argc, char * argv[]) {
         throw STR("Invalid number of arguments");
     }
 
+    Crawler::SetQueueLimit(10000);
+    Tokenizer::SetQueueLimit(10000);
+    Merger::SetQueueLimit(10000);
+    Writer::SetQueueLimit(10000);
+
+
     std::string outdir = argv[2];
 
     for (unsigned i = 3; i < argc; ++i)
@@ -79,10 +85,6 @@ void tokenize(int argc, char * argv[]) {
 
     start = std::chrono::high_resolution_clock::now();
 
-    Crawler::SetQueueLimit(10000);
-    Tokenizer::SetQueueLimit(10000);
-    Merger::SetQueueLimit(10000);
-    Writer::SetQueueLimit(10000);
 
 
     Crawler::initializeWorkers(8);
