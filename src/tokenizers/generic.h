@@ -5,11 +5,72 @@
 #include <cassert>
 #include <iostream>
 
+
+#include "../data.h"
+
+class GenericTokenizer {
+public:
+    static void tokenize(TokenizedFile * f) {
+        GenericTokenizer t(f);
+        t.loadEntireFile();
+        t.tokenize();
+        f->updateFileStats(t.data_);
+    }
+
+private:
+
+    GenericTokenizer(TokenizedFile * f):
+        f_(*f) {
+    }
+
+    bool eof();
+    char top();
+    void pop(unsigned by = 1);
+    char peek(int offset);
+
+    void addToken(unsigned start, unsigned length);
+    void newline();
+
+
+    void tokenize();
+
+
+
+    void loadEntireFile();
+
+
+
+
+    TokenizedFile & f_;
+    std::string data_;
+
+    unsigned pos_;
+    bool hasComment_;
+    bool hasToken_;
+
+};
+
+
+
+
+
+
+
+
+# ifdef HAHA
+
+
+
+
 #include "../hashes/md5.h"
 
 #include "../old/utils.h"
 
 #include "../old/data.h"
+
+
+
+
 
 
 class Tokenizer {
@@ -138,3 +199,7 @@ private:
      */
     bool commentLine_;
 };
+
+
+
+#endif

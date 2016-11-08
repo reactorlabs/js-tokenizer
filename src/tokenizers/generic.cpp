@@ -1,3 +1,168 @@
+#include "generic.h"
+#include "../worker.h"
+
+// "; . [ ] ( ) ~ ! - + & * / % < > & ^ | ? { } = # , " \ : $ '"
+
+
+bool GenericTokenizer::eof() {
+    return pos_ >= data_.size();
+}
+
+char GenericTokenizer::top() {
+    if (pos_ >= data_.size())
+        return 0;
+    if (data_[pos_] == '\n') {
+        if (peek(1) == '\r') {
+            data_[pos_ + 1] = '\n';
+            ++pos_;
+        }
+    } else if (data_[pos_] == '\r') {
+        if (peek(1) == '\n')
+            ++pos_;
+    }
+    return data_[pos_];
+}
+
+void GenericTokenizer::pop(unsigned by) {
+    pos_ += by;
+    if (pos_ > data_.size())
+        pos_ = data_.size();
+}
+
+char GenericTokenizer::peek(int offset) {
+    if (pos_ + offset < 0 or pos_ + offset >= data_.size())
+        return 0;
+    return data_[pos_ + offset];
+}
+
+
+void GenericTokenizer::addToken(unsigned start, unsigned length) {
+    if (length > 0) {
+        hasToken_ = true;
+        f_.addToken(data_.substr(start, length));
+        f_.stats.tokenBytes_ += length;
+    }
+}
+
+void GenericTokenizer::newline() {
+    ++f_.stats.loc_;
+    if (not hasToken_) {
+        if (hasComment_)
+            ++f_.stats.commentLoc_;
+        else
+            ++f_.stats.emptyLoc_;
+    }
+    hasComment_ = false;
+    hasToken_ = false;
+}
+
+void GenericTokenizer::tokenize() {
+    pos_ = 0;
+    hasComment_ = false;
+    hasToken_ = false;
+    unsigned start = 0;
+    unsigned tokenLength_ = 0;
+    while (not eof()) {
+        if (top() == '/') {
+            // single line comment
+            if (peek(1) == '/') {
+                pop(2);
+                hasComment_ = true;
+                while (not eof() and top() != '\n')
+                    pop();
+            // multi-line comment
+            } else if (peek(1) == '*') {
+                pop(2);
+                hasComment_ = true;
+                while (not eof()) {
+                    if (top() == '*' and peek(1) == '/')
+                        break;
+                    pop();
+                }
+            }
+        }
+        // the comment might have been the last thing
+        if (eof())
+            break;
+        switch (top()) {
+            case ';':
+            case '.':
+            case '[':
+            case ']':
+            case '(':
+            case ')':
+            case '~':
+            case '!':
+            case '-':
+            case '+':
+            case '&':
+            case '*':
+            case '/':
+            case '%':
+            case '<':
+            case '>':
+            case '^':
+            case '|':
+            case '?':
+            case '{':
+            case '}':
+            case '=':
+            case '#':
+            case ',':
+            case '"':
+            case '\\':
+            case ':':
+            case '$':
+            case '\'':
+            case '\t':
+            case ' ':
+            case '\r':
+            case '\n':
+                addToken(start, tokenLength_);
+                if (top() == '\n')
+                    newline();
+                pop();
+                start = pos_;
+                tokenLength_ = 0;
+                break;
+            default:
+                pop();
+                ++tokenLength_;
+                break;
+        }
+    }
+    addToken(start, tokenLength_);
+}
+
+void GenericTokenizer::loadEntireFile() {
+    std::ifstream s(f_.absPath(), std::ios::in | std::ios::binary);
+    if (not s.good()) {
+        Worker::Warning(STR("Resetting git for project " << f_.project()->path()));
+        if (system(STR("cd \"" << f_.project()->path() << "\" && git reset --hard").c_str()) != EXIT_SUCCESS)
+            throw STR("Unable to reset project " << f_.project()->path());
+        s.open(f_.absPath(), std::ios::in | std::ios::binary);
+        if (not s.good())
+            throw STR("Unable to open file " << f_.absPath());
+    }
+    s.seekg(0, std::ios::end);
+    data_.resize(s.tellg());
+    s.seekg(0, std::ios::beg);
+    s.read(& data_[0], data_.size());
+    s.close();
+    if (data_.size() >= 4 and data_[0] == 'P' and data_[1] =='K' and data_[2] == '\003' and data_[3] == '\004')
+        throw STR("File " << f_.absPath() << " seems to be archive");
+}
+
+
+
+
+
+
+
+
+
+
+
 #ifdef HAHA
 #include "../old/worker.h"
 #include "generic.h"

@@ -8,7 +8,7 @@
 
 #include "tokenizers/js.h"
 
-//#include "tokenizers/generic.h"
+#include "tokenizers/generic.h"
 
 
 
@@ -68,7 +68,9 @@ void Tokenizer::tokenize(GitProject * project, std::string const & relPath, int 
     TokenizedFile * tf = new TokenizedFile(project, relPath);
     if (isFile(tf->absPath())) {
         Worker::Log(STR("tokenizing " << tf->absPath()));
-        JSTokenizer::tokenize(tf);
+        GenericTokenizer::tokenize(tf);
+
+        // JSTokenizer::tokenize(tf);
 
         tf->stats.createdDate = cdate;
 

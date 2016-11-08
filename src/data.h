@@ -212,6 +212,10 @@ public:
 
     unsigned createdDate;
 
+    unsigned loc_ = 1;
+    unsigned commentLoc_ = 0;
+    unsigned emptyLoc_ = 0;
+    unsigned tokenBytes_ = 0;
 
 private:
     friend class TokenizedFile;
@@ -230,12 +234,8 @@ private:
     unsigned bytes_ = 0;
     unsigned commentBytes_ = 0;
     unsigned whitespaceBytes_ = 0;
-    unsigned tokenBytes_ = 0;
     unsigned separatorBytes_ = 0;
 
-    unsigned loc_ = 1;
-    unsigned commentLoc_ = 0;
-    unsigned emptyLoc_ = 0;
 
 
 
