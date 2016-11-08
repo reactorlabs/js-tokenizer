@@ -13,6 +13,8 @@
 
 
 
+std::atomic_uint Tokenizer::jsErrors_(0);
+
 
 std::ostream & operator << (std::ostream & s, TokenizerJob const & job) {
     s << job.absPath();
@@ -72,6 +74,8 @@ void Tokenizer::tokenize(GitProject * project, std::string const & relPath, int 
 
         processedBytes_ += tf->stats.bytes();
         ++processedFiles_;
+        if (tf->stats.errors > 0)
+            ++jsErrors_;
 
         Merger::Schedule(MergerJob(tf));
     } else {

@@ -60,7 +60,8 @@ void displayStats(double duration) {
     std::cout << "Unique tokens     " << Merger::NumUniqueTokens() << std::endl;
     std::cout << "Empty files       " << Merger::NumEmptyFiles() << pct(Merger::NumEmptyFiles(), Merger::ProcessedFiles()) << std::endl;
     std::cout << "Detected clones   " << Merger::NumClones() << pct(Merger::NumClones(), Merger::ProcessedFiles()) << std::endl;
-    std::cout << cursorUp(15);
+    std::cout << "JS errors         " << Tokenizer::jsErrors() << pct(Tokenizer::jsErrors(), Tokenizer::ProcessedFiles()) << std::endl;
+    std::cout << cursorUp(16);
     Worker::UnlockOutput();
 }
 

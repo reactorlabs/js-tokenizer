@@ -30,6 +30,10 @@ public:
         QueueProcessor<TokenizerJob>(STR("TOKENIZER " << index)) {
     }
 
+    static unsigned jsErrors() {
+        return jsErrors_;
+    }
+
     static void initializeWorkers(unsigned num);
 
 private:
@@ -44,5 +48,7 @@ private:
     /** Tokenizes given file and schedules it for token identification and writing.
      */
     void tokenize(GitProject * project, std::string const & relPath, int cdate);
+
+    static std::atomic_uint jsErrors_;
 
 };
