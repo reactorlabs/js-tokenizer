@@ -96,7 +96,7 @@ size_t JSTokenizer::pos() {
 }
 
 bool JSTokenizer::eof() {
-    return pos() == size();
+    return pos() >= size();
 }
 
 char JSTokenizer::top() {
@@ -286,6 +286,12 @@ void JSTokenizer::regularExpressionLiteral() {
                 pop(1);
         }
         if (top() == '\\') // any escape will do
+            if (eof()) {
+                Worker::Log("Missing escape in regular expression, unterminated regular expression");
+                f_.tokenizationError();
+                addToken(start);
+                return;
+            }
             pop(1);
         if (top() == '\n') {
             Worker::Log("Multiple lines in regular expression literal");
