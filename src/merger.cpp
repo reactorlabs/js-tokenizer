@@ -79,20 +79,6 @@ Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
         return i->second;
     }
 }
-/*
-void Merger::idsForTokens(TokenizedFile * tf) {
-    TokenMap tm;
-    for (auto i : tf->tokens) {
-        accessM_.lock();
-        auto j = uniqueTokenIds_.find(i.first);
-        if (j == uniqueTokenIds_.end())
-            j = uniqueTokenIds_.insert(std::pair<std::string, TokenInfo>(i.first, TokenInfo(uniqueTokenIds_.size()))).first;
-        ++(j->second);
-        accessM_.unlock();
-        tm.add(STR(std::hex << j->second.id), i.second);
-    }
-    tf->updateTokenMap(std::move(tm));
-} */
 
 // TODO these are dumb for now
 void Merger::lockTokenIdRead() {
