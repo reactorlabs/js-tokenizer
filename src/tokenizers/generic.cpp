@@ -40,17 +40,16 @@ void GenericTokenizer::addToken(unsigned start, unsigned length) {
     if (length > 0) {
         hasToken_ = true;
         f_.addToken(data_.substr(start, length));
-        f_.stats.tokenBytes_ += length;
     }
 }
 
 void GenericTokenizer::newline() {
-    ++f_.stats.loc_;
+    ++f_.loc;
     if (not hasToken_) {
         if (hasComment_)
-            ++f_.stats.commentLoc_;
+            ++f_.commentLoc;
         else
-            ++f_.stats.emptyLoc_;
+            ++f_.emptyLoc;
     }
     hasComment_ = false;
     hasToken_ = false;
@@ -135,22 +134,16 @@ void GenericTokenizer::tokenize() {
 }
 
 void GenericTokenizer::loadEntireFile() {
-    std::ifstream s(f_.absPath(), std::ios::in | std::ios::binary);
-    if (not s.good()) {
-        Worker::Warning(STR("Resetting git for project " << f_.project()->path()));
-        if (system(STR("cd \"" << f_.project()->path() << "\" && git reset --hard").c_str()) != EXIT_SUCCESS)
-            throw STR("Unable to reset project " << f_.project()->path());
-        s.open(f_.absPath(), std::ios::in | std::ios::binary);
-        if (not s.good())
-            throw STR("Unable to open file " << f_.absPath());
-    }
+    std::ifstream s(f_.path(), std::ios::in | std::ios::binary);
+    if (not s.good())
+        throw STR("Unable to open file " << f_.path());
     s.seekg(0, std::ios::end);
     data_.resize(s.tellg());
     s.seekg(0, std::ios::beg);
     s.read(& data_[0], data_.size());
     s.close();
     if (data_.size() >= 4 and data_[0] == 'P' and data_[1] =='K' and data_[2] == '\003' and data_[3] == '\004')
-        throw STR("File " << f_.absPath() << " seems to be archive");
+        throw STR("File " << f_.path() << " seems to be archive");
 }
 
 

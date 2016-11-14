@@ -20,10 +20,6 @@
 
  */
 
-std::atomic_uint Merger::fid_(FILE_ID_STARTS_AT);
-unsigned Merger::pid_(PROJECT_ID_STARTS_AT);
-
-
 Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
 std::unordered_map<std::string, Merger::CloneInfo> Merger::clones_;
 //std::unordered_map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
@@ -65,11 +61,11 @@ void Merger::writeGlobalTokens(std::ostream & s) {
 Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
     if (stopClones_ == StopClones::none)
         return CloneInfo();
-    std::string const & hash = stopClones_ == StopClones::file ? tf->stats.fileHash() : tf->stats.tokensHash();
+    std::string const & hash = stopClones_ == StopClones::file ? tf->fileHash : tf->tokensHash;
     accessC_.lock();
     auto i = clones_.find(hash);
     if (i == clones_.end()) {
-        clones_[hash] = CloneInfo(tf->pid(), tf->id());
+        clones_[hash] = CloneInfo(tf->project->id, tf->id);
         accessC_.unlock();
         return CloneInfo();
     } else {
@@ -106,6 +102,7 @@ void Merger::unlockCounts() {
 }
 
 void Merger::tokensToIds(TokenizedFile * tf) {
+#ifdef HAHA
     std::map<unsigned, unsigned> matched;
     TokenMap missing;
 
@@ -160,19 +157,19 @@ void Merger::tokensToIds(TokenizedFile * tf) {
     tf->tokens.clear();
     for (auto i : matched)
         tf->tokens.add(STR(std::hex << i.first), i.second);
+
+#endif
 }
 
 
 
 void Merger::process(MergerJob const & job) {
+#ifdef HAHA
     TokenizedFile * tf = job.file;
     bool writeProject = false;
 
     // convert tokens to unique ids
     tokensToIds(tf);
-
-    // get file id's
-    tf->setId(fid_++);
 
     // lock on project id's
     accessPid_.lock();
@@ -196,4 +193,5 @@ void Merger::process(MergerJob const & job) {
 
     // schedule writing of the file
     Writer::Schedule(WriterJob(job.file, writeProject, ci.pid, ci.fid));
+#endif
 }

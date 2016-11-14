@@ -32,4 +32,7 @@ private:
 
     /** Returns the URL of git project in the given directory, or empty string if the directory is not git project. */
     static std::string projectUrl(std::string const & path);
+
+    /** Project id's when assigned by the crawlers. */
+    static std::atomic_uint pid_;
 };

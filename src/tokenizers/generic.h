@@ -6,7 +6,7 @@
 #include <iostream>
 
 
-#include "../data.h"
+#include "../tokenizer.h"
 
 class GenericTokenizer {
 public:
@@ -14,7 +14,7 @@ public:
         GenericTokenizer t(f);
         t.loadEntireFile();
         t.tokenize();
-        f->updateFileStats(t.data_);
+        //f->updateFileStats(t.data_);
     }
 
 private:

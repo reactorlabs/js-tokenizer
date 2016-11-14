@@ -1,7 +1,7 @@
 #include <fstream>
 
 #include "worker.h"
-#include "data.h"
+#include "tokenizer.h"
 
 
 struct WriterJob {
@@ -16,8 +16,8 @@ struct WriterJob {
         return originalPid != 0 and originalFid != 0;
     }
 
-    static_assert(FILE_ID_STARTS_AT > 0, "0 means not initialized");
-    static_assert(PROJECT_ID_STARTS_AT > 0, "0 means not initialized");
+    //static_assert(FILE_ID_STARTS_AT > 0, "0 means not initialized");
+    //static_assert(PROJECT_ID_STARTS_AT > 0, "0 means not initialized");
 
 /*    WriterJob(TokenizedFile * file):
         file(file),

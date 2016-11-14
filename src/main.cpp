@@ -5,6 +5,8 @@
 
 #include "data.h"
 #include "validator.h"
+#include "CSVParser.h"
+#include "downloader.h"
 #include "crawler.h"
 #include "tokenizer.h"
 #include "merger.h"
@@ -19,7 +21,43 @@ std::chrono::high_resolution_clock::time_point end;
 
 
 void help() {
-    std::cout << "This should be helpful..." << std::endl;
+    std::cout << "Tokenizer & Downloader" << std::endl;
+    std::cout << "----------------------" << std::endl << std::endl;
+    std::cout << "Usage:" << std::endl << std::endl;
+    std::cout << "tokenizer ACTION {COMMON_ARGS} {ACTION_ARGS}" << std::endl << std::endl;
+    std::cout << "Where COMMON_ARGS stands for the following" << std::endl << std::endl;
+
+    std::cout << "-v | --verbose     ---   enables verbose output" << std::endl;
+    std::cout << "-dt=N              ---   specifies number of downloader threads" << std::endl;
+    std::cout << "-ct=N              ---   specifies number of crawler threads" << std::endl;
+    std::cout << "-tt=N              ---   specifies number of tokenier threads" << std::endl;
+    std::cout << "-mt=N              ---   specifies number of merger threads" << std::endl;
+    std::cout << "-wt=N              ---   specifies number of writer threads" << std::endl;
+
+    std::cout << "-dq=N              ---   specifies max size of downloader job queue (and opened projects)" << std::endl;
+    std::cout << "-cq=N              ---   specifies max size of crawler job queue" << std::endl;
+    std::cout << "-tq=N              ---   specifies max size of tokenizer queue" << std::endl;
+    std::cout << "-mq=N              ---   specifies max size of merger queue (and opened files)" << std::endl;
+    std::cout << "-wq=N              ---   specifies max size of writer queue (and opened files)" << std::endl;
+
+    std::cout << "-tt=js             ---   enables only the JavaScript specific tokenizer" << std::endl;
+    std::cout << "-tt=js+generic     ---   enables the generic and the JavaScript specific tokenizer" << std::endl;
+
+
+    std::cout << "And ACTION & corresponding ACTION_ARGS stand for:" << std::endl << std::endl;
+    std::cout << "-t | --tokenize    ---   tokenizes all github projects in given folders" << std::endl;
+    std::cout << "-d | --download    ---   downloads github projects stored in the specified repos and tokenies them" << std::endl;
+
+    std::cout << "-v | --validate    ---   validates results previous obtained" << std::endl;
+
+
+}
+
+void parseArguments(int argc, char * argv[]) {
+    // ignore the first argument, which
+
+
+
 }
 
 
@@ -87,12 +125,13 @@ void tokenize(int argc, char * argv[]) {
     start = std::chrono::high_resolution_clock::now();
 
 
-
-    Crawler::initializeWorkers(8);
-    Tokenizer::initializeWorkers(8);
-    Merger::initializeWorkers(8);
     Writer::initializeOutputDirectory(outdir);
-    Writer::initializeWorkers(1);
+
+
+    Worker::InitializeThreads<Crawler>(8);
+    Worker::InitializeThreads<Tokenizer>(8);
+    Worker::InitializeThreads<Merger>(8);
+    Worker::InitializeThreads<Writer>(1);
 
     do {
         displayStats(secondsSince(start));
@@ -105,6 +144,33 @@ void tokenize(int argc, char * argv[]) {
     Merger::writeGlobalTokens(tokens);
 }
 
+void downloaderStatistics() {
+    Worker::LockOutput();
+    std::cout << "Total projects " << CSVParser::TotalProjects() << ", language " << CSVParser::LanguageProjects() << ", deleted " << CSVParser::DeletedProjects() << ", forked " << CSVParser::ForkedProjects() << ", valid " << CSVParser::ValidProjects() << std::endl;
+    Worker::UnlockOutput();
+}
+
+/** Download the stuff from the repo and tokenize it on the fly.
+ */
+void download(int argc, char * argv[]) {
+    CSVParser::Schedule("/home/peta/sourcerer/projects.small.csv");
+    CSVParser::SetLanguage("JavaScript");
+
+    Downloader::SetKeepWhenDone(true);
+    Downloader::SetDownloadDir("/home/peta/sourcerer/downloaded");
+    Downloader::Initialize();
+
+    Worker::InitializeThreads<CSVParser>(1);
+    Worker::InitializeThreads<Downloader>(1);
+    do {
+        downloaderStatistics();
+
+
+
+    } while (true);
+
+}
+
 
 
 
@@ -114,6 +180,8 @@ void tokenize(int argc, char * argv[]) {
   I.e. runs diffs on its clones where file hashes differ and checks that file hash same clones are byte for byte identical.
  */
 void validate(int argc, char * argv[]) {
+#ifdef HAHA
+
     std::cout << "Initializing..." << std::endl;
     Validator::Initialize("processed");
     start = std::chrono::high_resolution_clock::now();
@@ -124,7 +192,7 @@ void validate(int argc, char * argv[]) {
     } while (not Worker::WaitForFinished(1000));
     Validator::DisplayStats(secondsSince(start));
     std::cout << cursorDown(10);
-
+#endif
 
 }
 
@@ -134,9 +202,26 @@ void validate(int argc, char * argv[]) {
 void process(int argc, char * argv[]) {
 
 }
+/** Changes that I must implement:
+
+  - instead of taking data from disk, take data from the csv file
+  - download each project, i.e. have github project management
+  - the downloader can load up to N projects at the same time
+  - change the output of large tokens so that we hash them when necessary
+  - use database to check for file hashes
+ */
+
+
+
+
+
 
 int main(int argc, char * argv[]) {
     try {
+        download(argc, argv);
+        return EXIT_SUCCESS;
+
+
         if (argc < 2) {
             help();
             throw STR("Invalid number of arguments");

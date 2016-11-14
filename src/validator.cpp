@@ -5,6 +5,8 @@
 #include "escape_codes.h"
 #include "tokenizers/js.h"
 
+#ifdef HAHA
+
 std::string Validator::outputDir_;
 std::atomic_uint Validator::errors_;
 std::atomic_uint Validator::identical_;
@@ -132,3 +134,4 @@ void Validator::analyzeDiff(FileStats * one, FileStats * two) {
     ++errors_;
 }
 
+#endif

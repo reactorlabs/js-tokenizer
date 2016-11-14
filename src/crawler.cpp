@@ -7,22 +7,13 @@
 #include "tokenizer.h"
 
 
-void Crawler::initializeWorkers(unsigned num) {
-    for (unsigned i = 0; i < num; ++i) {
-        std::thread t([i] () {
-            Crawler c(i);
-            c();
-        });
-        t.detach();
-    }
-}
-
+std::atomic_uint Crawler::pid_(0);
 
 void Crawler::process(CrawlerJob const & job) {
     std::string url = projectUrl(job.path);
     // if the directory is not empty, create job for the tokenizer
     if (not url.empty()) {
-        Tokenizer::Schedule(TokenizerJob(job.path, url));
+        Tokenizer::Schedule(TokenizerJob(new ClonedProject(pid_++, url, 0)));
     // otherwise recursively scan all its subdirectories
     } else {
         struct dirent * ent;

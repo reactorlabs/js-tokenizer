@@ -4,7 +4,7 @@
 
 #include "data.h"
 
-
+#ifdef HAHA
 
 
 // ProjectInfo -----------------------------------------------------------------
@@ -278,3 +278,4 @@ void CloneGroup::writeStats(std::ostream & s) {
 }
 
 
+#endif

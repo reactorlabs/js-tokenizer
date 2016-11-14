@@ -1,28 +1,94 @@
 #pragma once
 #include "data.h"
 #include "worker.h"
+#include "downloader.h"
 
-struct TokenizerJob {
-    GitProject * project;
+
+class TokenizedFile {
+public:
+    ClonedProject * project;
+    unsigned id;
+
     std::string relPath;
 
-    TokenizerJob(std::string const & path, std::string const & url):
-        project(new GitProject(path, url)),
-        relPath("") {
-        ++project->handles_;
+    unsigned totalTokens = 0;
+    unsigned uniqueTokens = 0;
+    unsigned errors = 0;
+    unsigned createdDate = 0;
+    unsigned loc = 0;
+    unsigned commentLoc = 0;
+    unsigned emptyLoc = 0;
+    unsigned bytes = 0;
+    unsigned whitespaceBytes = 0;
+    unsigned commentBytes = 0;
+    unsigned separatorBytes = 0;
+    unsigned tokenBytes = 0;
+    std::string fileHash;
+    std::string tokensHash;
+
+    std::map<std::string, unsigned> tokens;
+
+    void addToken(std::string const & token) {
+        ++totalTokens;
+        tokenBytes += token.size();
+        ++tokens[token];
     }
 
-    std::string absPath() const {
-        if (relPath.empty())
-            return project->path();
-        else
-            return project->path() + "/" + relPath;
+    void addSeparator(std::string const & separator) {
+        separatorBytes += separator.size();
     }
 
-    /** Prettyprinting.
-     */
-    friend std::ostream & operator << (std::ostream & s, TokenizerJob const & job);
+    void addSeparator(unsigned size) {
+        separatorBytes += size;
+    }
+
+    void addComment(std::string const & comment) {
+        commentBytes += comment.size();
+    }
+
+    void addComment(unsigned size) {
+        commentBytes += size;
+    }
+
+    void addWhitespace(char whitespace) {
+        ++whitespaceBytes;
+    }
+
+    void newline(bool commentOnly, bool empty) {
+        ++loc;
+        if (commentOnly)
+            if (empty)
+                ++emptyLoc;
+            else
+                ++commentLoc;
+    }
+
+    TokenizedFile(ClonedProject * p, unsigned id, std::string relPath):
+        project(p),
+        id(id),
+        relPath(relPath) {
+    }
+
+    std::string path() const {
+        return STR(project->path() << "/" << relPath);
+    }
 };
+
+
+
+struct TokenizerJob {
+    ClonedProject * project;
+
+    TokenizerJob(ClonedProject * project):
+        project(project) {
+    }
+
+    friend std::ostream & operator << (std::ostream & s, TokenizerJob const & job) {
+        s << job.project->cloneUrl();
+        return s;
+    }
+};
+
 
 class Tokenizer: public QueueProcessor<TokenizerJob> {
 public:
@@ -47,7 +113,13 @@ private:
 
     /** Tokenizes given file and schedules it for token identification and writing.
      */
-    void tokenize(GitProject * project, std::string const & relPath, int cdate);
+    void tokenize(ClonedProject * project, std::string const & relPath, int cdate);
+
+    static std::atomic_uint fid_;
+
+
+
+
 
     static std::atomic_uint jsErrors_;
 

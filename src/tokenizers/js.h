@@ -2,7 +2,7 @@
 
 #include <unordered_set>
 
-#include "../data.h"
+#include "../tokenizer.h"
 
 
 
@@ -14,7 +14,7 @@ public:
         JSTokenizer t(f);
         t.loadEntireFile();
         t.tokenize();
-        f->updateFileStats(t.data_);
+        //f->updateFileStats(t.data_);
     }
 
     static void Tokenize(TokenizedFile & f, std::string const & contents) {
@@ -22,7 +22,7 @@ public:
         t.data_ = contents;
         t.pos_ = 0;
         t.tokenize();
-        f.updateFileStats(t.data_);
+        //f.updateFileStats(t.data_);
     }
 
     static bool & IgnoreSeparators() {

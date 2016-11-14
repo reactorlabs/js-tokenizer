@@ -10,6 +10,16 @@
 #define STR(WHAT) static_cast<std::stringstream&>(std::stringstream() << WHAT).str()
 
 
+inline unsigned decDigit(char from) {
+    return from - '0';
+}
+
+inline unsigned timestampFrom(std::string col) {
+    // TODO return something meaningful
+}
+
+
+
 char toHexDigit(unsigned from);
 
 unsigned fromHexDigit(char from);

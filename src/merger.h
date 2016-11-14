@@ -3,7 +3,7 @@
 #include <atomic>
 #include <unordered_map>
 
-#include "data.h"
+#include "tokenizer.h"
 #include "worker.h"
 
 struct MergerJob {
@@ -14,25 +14,29 @@ struct MergerJob {
     }
 
     friend std::ostream & operator << (std::ostream & s, MergerJob const & job) {
-        s << job.file->absPath();
+        s << job.file->path();
         return s;
     }
 
 };
 
+/** The merger needs to be redesigned so that it cooperates with the attached SQL database.
+
+  But how to do the merging in the database?
+
+
+ */
+
+
+
+
+
 class Merger: public QueueProcessor<MergerJob> {
 public:
-    enum class StopClones {
-        none,
-        tokens,
-        file
-    };
 
     Merger(unsigned index):
         QueueProcessor<MergerJob>(STR("MERGER " << index)) {
     }
-
-    static void initializeWorkers(unsigned num);
 
     static void writeGlobalTokens(std::ostream & s);
 
@@ -54,6 +58,31 @@ public:
     }
 
 private:
+
+    struct TokenInfo {
+        unsigned id;
+        unsigned count;
+
+
+        /** When new token info is created, set its count to zero and assign new id.
+         */
+        TokenInfo():
+            id(++id_),
+            count(0) {
+        }
+
+        /** Increases the count of the token
+        unsigned inc() {
+            ++count;
+            return id;
+        }
+
+
+
+        // no need to be atomic - the map has to be locked for access anyways
+        static unsigned id_;
+    };
+
 
     struct CloneInfo {
         unsigned pid;

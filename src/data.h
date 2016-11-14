@@ -10,97 +10,14 @@
 #include "utils.h"
 #include "config.h"
 
+#ifdef HAHA
+
 
 constexpr unsigned FILE_ID_STARTS_AT = 1;
 constexpr unsigned PROJECT_ID_STARTS_AT = 1;
 
-/** Representation of a git project.
 
-  Contains project id, path and url.
- */
-class GitProject {
-public:
-
-
-    static void parseFile(std::string const & filename);
-
-    static GitProject * Get(size_t id) {
-        id -= PROJECT_ID_STARTS_AT;
-        assert(id < projects_.size());
-        return projects_[id];
-    }
-
-    std::string const & path() const {
-        return path_;
-    }
-
-    std::string const & githubUrl() const {
-        if (githubUrl_.empty())
-            githubUrl_ = githubUrl(url_);
-        return githubUrl_;
-    }
-
-    unsigned id() const {
-        return id_;
-    }
-
-    void writeTo(std::ostream & s) {
-        s << id_ << "," << escapePath(path()) << "," << escapePath(githubUrl()) << std::endl;
-    }
-
-    GitProject():
-        id_(0),
-        handles_(0) {
-    }
-
-    GitProject(std::string const & path, std::string const & url):
-        id_(0),
-        path_(path),
-        url_(url),
-        handles_(0) {
-    }
-
-    static unsigned NumProjects() {
-        return projects_.size();
-    }
-
-private:
-    friend class FileStats;
-    friend class TokenizedFile;
-    friend class Tokenizer;
-    friend class TokenizerJob;
-
-    static std::string githubUrl(std::string const & giturl) {
-        std::string url = giturl;
-        if (url.substr(url.size() - 4) != ".git")
-            return "";
-        if (url.substr(0, 15) == "git@github.com:") {
-            url = url.substr(15, url.size() - 19);
-        } else if (url.substr(0, 17) == "git://github.com/") {
-            url = url.substr(17, url.size() - 21);
-        } else if (url.substr(0, 19) == "https://github.com/") {
-            url = url.substr(19, url.size() - 23);
-        } else if (url.substr(0, 34) == "https://jakubzitny:asd@github.com/") {
-            url = url.substr(34, url.size() - 38);
-        } else {
-            return giturl; // not a github project, return project url
-        }
-        return "https://github.com/" + url;
-    }
-
-    void loadFrom(std::string const & tmp);
-
-    unsigned id_;
-    std::string path_;
-    std::string url_;
-    mutable std::string githubUrl_;
-
-
-    std::atomic_uint handles_;
-
-    static std::vector<GitProject *> projects_;
-
-};
+class ClonedProject;
 
 
 /** Token map.
@@ -245,12 +162,34 @@ private:
     static std::vector<FileStats *> files_;
 };
 
-class TokenizedFile {
+class TokenizedFile2 {
 public:
 
+    ClonedProject * project;
+    unsigned id;
+    unsigned totalTokens;
+    unsigned uniqueTokens;
+    unsigned errors;
+    unsigned createdDate;
+    unsigned loc;
+    unsigned commentloc;
+    unsigned emptyLoc;
+    unsigned bytes;
+    unsigned whitespaceBytes;
+    unsigned commentBytes;
+    unsigned separatorBytes;
+    unsigned tokenBytes;
+    std::string fileHash;
+    std::string tokensHash;
+
+    std::map<std::string, unsigned> tokens;
+
+
     bool empty() const {
-        return tokens.freqs_.empty();
+        return tokens.empty();
     }
+
+
 
     void updateFileStats(std::string const & contents);
 
@@ -305,7 +244,7 @@ public:
         return stats.project_->id_;
     }
 
-    GitProject * project() const {
+    ClonedProject * project() const {
         return stats.project_;
     }
 
@@ -323,7 +262,7 @@ public:
      */
     void writeTokens(std::ostream & s);
 
-    TokenizedFile(GitProject * project, std::string const & relPath):
+    TokenizedFile(ClonedProject * project, std::string const & relPath):
         stats(project, relPath) {
         ++project->handles_;
     }
@@ -436,3 +375,4 @@ private:
 
 
 
+#endif

@@ -8,7 +8,7 @@
 
 
 std::ostream & operator << (std::ostream & s, WriterJob const & job) {
-    s << job.file->absPath();
+    s << job.file->path();
     return s;
 }
 
@@ -53,7 +53,7 @@ void Writer::openStreamAndCheck(std::ofstream & s, std::string const & filename)
 
 
 void Writer::process(WriterJob const & job) {
-
+#ifdef HAHA
     // always output full stats
     job.file->stats.uniqueTokens_ = job.file->tokens.size();
     job.file->stats.writeFullStats(fullStats_);
@@ -77,4 +77,6 @@ void Writer::process(WriterJob const & job) {
 
     // finally delete the file
     delete job.file;
+
+#endif
 }

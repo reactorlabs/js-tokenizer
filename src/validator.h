@@ -4,7 +4,7 @@
 #include "data.h"
 #include "worker.h"
 
-
+#ifdef HAHA
 
 
 class Validator : public Worker {
@@ -64,3 +64,4 @@ private:
     static std::atomic_uint separatorDifferent_;
 
 };
+#endif

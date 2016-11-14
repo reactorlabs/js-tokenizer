@@ -119,7 +119,7 @@ std::string JSTokenizer::substr(size_t start, size_t end) {
     try {
         return data_.substr(start, end - start);
     } catch (...) {
-        std::cout << "HERE I FAIL: " << f_.absPath() << std::endl;
+        std::cout << "HERE I FAIL: " << f_.path() << std::endl;
         std::cout << "ouch" << std::endl;
         //exit(-1);
         //system(STR("mv " << f_.absPath() << " " << "/home/peta/sourcerer/data/errors").c_str());
@@ -237,7 +237,7 @@ void JSTokenizer::templateLiteral() {
         pop(1); // delimiter
     } else {
         Worker::Log("Unterminated template literal");
-        f_.tokenizationError();
+        ++f_.errors;
     }
     addToken(start);
 }
@@ -260,7 +260,7 @@ void JSTokenizer::stringLiteral() {
         }
         if (top() == '\n') {
             Worker::Log("Multiple lines in string literal");
-            f_.tokenizationError();
+            ++f_.errors;
             addToken(start);
             return;
         }
@@ -270,7 +270,7 @@ void JSTokenizer::stringLiteral() {
         pop(1); // delimiter
     } else {
         Worker::Log("Unterminated string literal");
-        f_.tokenizationError();
+        ++f_.errors;
     }
     addToken(start);
 }
@@ -288,14 +288,14 @@ void JSTokenizer::regularExpressionLiteral() {
         if (top() == '\\') // any escape will do
             if (eof()) {
                 Worker::Log("Missing escape in regular expression, unterminated regular expression");
-                f_.tokenizationError();
+                ++f_.errors;
                 addToken(start);
                 return;
             }
             pop(1);
         if (top() == '\n') {
             Worker::Log("Multiple lines in regular expression literal");
-            f_.tokenizationError();
+            ++f_.errors;
             addToken(start);
             return;
         }
@@ -306,7 +306,7 @@ void JSTokenizer::regularExpressionLiteral() {
         pop(1); // delimiter
     } else {
         Worker::Log("Unterminated regular expression literal");
-        f_.tokenizationError();
+        ++f_.errors;
     }
     // now parse the flags, as if identifier
     while (isIdentifier(top()))
@@ -355,7 +355,7 @@ void JSTokenizer::multiLineComment() {
     }
     if (eof()) {
         Worker::Log("Unterminated multi-line comment");
-        f_.tokenizationError();
+        ++f_.errors;
     }
     addComment(start);
 }
@@ -369,7 +369,7 @@ void JSTokenizer::tokenize() {
     while (pos() != e) {
         if (start == pos()) {
             Worker::Log(STR("Unknown character " << top()));
-            f_.tokenizationError();
+            ++f_.errors;
             pop(1);
             addToken(substr(start, pos()));
         }
@@ -610,7 +610,7 @@ void JSTokenizer::encodeUTF8(unsigned codepoint, std::string & into) {
     } else {
         if (codepoint >= 0x80000000) {
             Worker::Log(STR("Unknown unicode character " << codepoint));
-            f_.tokenizationError();
+            ++f_.errors;
         }
         into += static_cast<char>(0xfc + (codepoint >> 30));
         into += static_cast<char>(0x80 + ((codepoint >> 24) & 0x3f));
@@ -669,15 +669,9 @@ void JSTokenizer::convertUTF16le() {
 }
 
 void JSTokenizer::loadEntireFile() {
-    std::ifstream s(f_.absPath(), std::ios::in | std::ios::binary);
-    if (not s.good()) {
-        Worker::Warning(STR("Resetting git for project " << f_.project()->path()));
-        if (system(STR("cd \"" << f_.project()->path() << "\" && git reset --hard").c_str()) != EXIT_SUCCESS)
-            throw STR("Unable to reset project " << f_.project()->path());
-        s.open(f_.absPath(), std::ios::in | std::ios::binary);
-        if (not s.good())
-            throw STR("Unable to open file " << f_.absPath());
-    }
+    std::ifstream s(f_.path(), std::ios::in | std::ios::binary);
+    if (not s.good())
+        throw STR("Unable to open file " << f_.path());
     s.seekg(0, std::ios::end);
     data_.resize(s.tellg());
     s.seekg(0, std::ios::beg);
@@ -696,5 +690,5 @@ void JSTokenizer::loadEntireFile() {
     if (data_.size() >= 3 and data_[0] == (char)0xef and data_[1] == (char) 0xbb and data_[2] == (char) 0xbf)
             pos_ = 3;
     if (data_.size() >= 4 and data_[0] == 'P' and data_[1] =='K' and data_[2] == '\003' and data_[3] == '\004')
-        throw STR("File " << f_.absPath() << " seems to be archive");
+        throw STR("File " << f_.path() << " seems to be archive");
 }

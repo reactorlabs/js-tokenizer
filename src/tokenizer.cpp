@@ -6,44 +6,33 @@
 #include "tokenizer.h"
 #include "merger.h"
 
+#include "db.h"
+
+
 #include "tokenizers/js.h"
+
+
 
 #include "tokenizers/generic.h"
 
 
-
+std::atomic_uint Tokenizer::fid_(0);
 
 std::atomic_uint Tokenizer::jsErrors_(0);
 
-
-std::ostream & operator << (std::ostream & s, TokenizerJob const & job) {
-    s << job.absPath();
-    return s;
-}
-
-void Tokenizer::initializeWorkers(unsigned num) {
-    for (unsigned i = 0; i < num; ++i) {
-        std::thread t([i] () {
-            Tokenizer c(i);
-            c();
-        });
-        t.detach();
-    }
-}
-
-
-
 void Tokenizer::process(TokenizerJob const & job) {
+    ClonedProject * p = job.project;
     // first, check if the directory already contains the file with last dates
-    std::ifstream cdates(STR(job.absPath() <<  "/cdate.js.tokenizer.txt"));
-    // if the file does not exist, create it first
+    std::ifstream cdates(STR(p->path() << "/cdate.js.tokenizer.txt"));
+    // if the file does not exist, create it first by running git
     if (not cdates.good()) {
-        int result = system(STR("cd \"" << job.absPath() << "\" &&  git log --format=\"format:%at\" --name-only --diff-filter=A > cdate.js.tokenizer.txt").c_str());
-        if (result != EXIT_SUCCESS)
-            throw STR("Unable to get cdates for files in project directory " << job.absPath());
+        exec(STR("git log --format=\"format:%at\" --name-only --diff-filter=A > cdate.js.tokenizer.txt"), p->path());
         // reopen the file
-        cdates.open(STR(job.absPath() <<  "/cdate.js.tokenizer.txt"));
+        cdates.open(STR(p->path() << "/cdate.js.tokenizer.txt"));
+        assert(cdates.good() and "It should really exist now");
     }
+    // now that we know the project is valid, add the project to the database
+    Db::addProject(p);
     // let's parse the output now
     int date = 0;
     while (not cdates.eof()) {
@@ -59,26 +48,26 @@ void Tokenizer::process(TokenizerJob const & job) {
                 tokenize(job.project, tmp, date);
         }
     }
+    throw STR("NOT IMPLEMENTED");
     // project bookkeeping, so that floating projects are deleted when all their files are written and they are no longer needed
-    --job.project->handles_;
+    //--job.project->handles_;
 }
 
-void Tokenizer::tokenize(GitProject * project, std::string const & relPath, int cdate) {
+void Tokenizer::tokenize(ClonedProject * project, std::string const & relPath, int cdate) {
     // TODO deal with different tokenizers being selectable programatically
-    TokenizedFile * tf = new TokenizedFile(project, relPath);
-    if (isFile(tf->absPath())) {
-        Worker::Log(STR("tokenizing " << tf->absPath()));
+    TokenizedFile * tf = new TokenizedFile(project, ++fid_, relPath);
+    if (isFile(tf->path())) {
+        Worker::Log(STR("tokenizing " << tf->path()));
         GenericTokenizer::tokenize(tf);
 
         // JSTokenizer::tokenize(tf);
 
-        tf->stats.createdDate = cdate;
+        tf->createdDate = cdate;
 
-        processedBytes_ += tf->stats.bytes();
+        processedBytes_ += tf->bytes;
         ++processedFiles_;
-        if (tf->stats.errors > 0)
+        if (tf->errors > 0)
             ++jsErrors_;
-
         Merger::Schedule(MergerJob(tf));
     } else {
         delete tf;

@@ -4,6 +4,7 @@
 #include <queue>
 #include <vector>
 #include <atomic>
+#include <thread>
 
 #include "utils.h"
 
@@ -73,6 +74,18 @@ public:
 
     static unsigned NumActiveThreads() {
         return numThreads_;
+    }
+
+    template<typename T>
+    static void InitializeThreads(unsigned num) {
+        static_assert(std::is_base_of<Worker, T>::value, "T must be subclass of Worker");
+        for (unsigned i = 0; i < num; ++i) {
+            std::thread t([i] () {
+                T c(i);
+                c();
+            });
+            t.detach();
+        }
     }
 
 protected:
@@ -222,7 +235,6 @@ protected:
         error_ = oldError;
     }
 
-private:
     /** This is where all the magic happens.
 
       Override this in children to define worker's actual behavior.
@@ -241,7 +253,7 @@ private:
         JOB result = jobs_.front();
         jobs_.pop();
         if (jobs_.size() < queueLimit_)
-            canAdd_.notify_all();
+            canAdd_.notify_one();
         return result;
     }
 
@@ -278,7 +290,7 @@ template<typename JOB>
 std::queue<JOB> QueueWorker<JOB>::jobs_;
 
 template<typename JOB>
-unsigned QueueWorker<JOB>::queueLimit_;
+unsigned QueueWorker<JOB>::queueLimit_ = 1000;
 
 template<typename JOB>
 class QueueProcessor : public QueueWorker<JOB> {
