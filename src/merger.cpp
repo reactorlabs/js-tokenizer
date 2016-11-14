@@ -156,6 +156,9 @@ void Merger::tokensToIds(TokenizedFile * tf) {
 
 void Merger::process(MergerJob const & job) {
     TokenizedFile * f = job.file;
+    // we have hashes and everything, so first check if it is clone, use tokens hash for that
+
+
 
 
 
