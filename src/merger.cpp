@@ -20,7 +20,6 @@
 
  */
 
-Merger::StopClones Merger::stopClones_ = Merger::StopClones::tokens;
 std::unordered_map<std::string, Merger::CloneInfo> Merger::clones_;
 //std::unordered_map<std::string, Merger::TokenInfo> Merger::uniqueTokenIds_;
 
@@ -39,15 +38,6 @@ std::atomic_uint Merger::numClones_(0);
 std::atomic_uint Merger::numEmptyFiles_(0);
 std::atomic_uint Merger::numErrorFiles_(0);
 
-void Merger::initializeWorkers(unsigned num) {
-    for (unsigned i = 0; i < num; ++i) {
-        std::thread t([i] () {
-            Merger c(i);
-            c();
-        });
-        t.detach();
-    }
-}
 
 void Merger::writeGlobalTokens(std::ostream & s) {
     for (auto i : tokenIds_) {
@@ -59,6 +49,7 @@ void Merger::writeGlobalTokens(std::ostream & s) {
 }
 
 Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
+    /*
     if (stopClones_ == StopClones::none)
         return CloneInfo();
     std::string const & hash = stopClones_ == StopClones::file ? tf->fileHash : tf->tokensHash;
@@ -73,7 +64,7 @@ Merger::CloneInfo Merger::checkClones(TokenizedFile * tf) {
         ++numClones_;
         Writer::Log("clone");
         return i->second;
-    }
+    } */
 }
 
 // TODO these are dumb for now
@@ -164,6 +155,12 @@ void Merger::tokensToIds(TokenizedFile * tf) {
 
 
 void Merger::process(MergerJob const & job) {
+    TokenizedFile * f = job.file;
+
+
+
+
+
 #ifdef HAHA
     TokenizedFile * tf = job.file;
     bool writeProject = false;

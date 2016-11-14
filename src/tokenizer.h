@@ -6,11 +6,17 @@
 
 class TokenizedFile {
 public:
+    enum class Tokenizer {
+        Generic,
+        JavaScript,
+    };
+
     ClonedProject * project;
     unsigned id;
 
     std::string relPath;
 
+    Tokenizer tokenizer;
     unsigned totalTokens = 0;
     unsigned uniqueTokens = 0;
     unsigned errors = 0;
@@ -92,12 +98,18 @@ struct TokenizerJob {
 
 class Tokenizer: public QueueProcessor<TokenizerJob> {
 public:
+    enum class Tokenizers {
+        Generic,
+        JavaScript,
+        GenericAndJs,
+    };
+
     Tokenizer(unsigned index):
         QueueProcessor<TokenizerJob>(STR("TOKENIZER " << index)) {
     }
 
     static unsigned jsErrors() {
-        return jsErrors_;
+        return 0;
     }
 
     static void initializeWorkers(unsigned num);
@@ -122,5 +134,7 @@ private:
 
 
     static std::atomic_uint jsErrors_;
+
+    static Tokenizers tokenizers_;
 
 };

@@ -30,16 +30,19 @@ public:
          */
         unsigned errors;
 
+        /** True if the threadgroup has been stalled since stats were obtained last time. */
+        bool stalled;
 
         bool finished() {
             return queueSize == 0 and activeThreads == 0;
         }
 
-        Stats(unsigned activeThreads, unsigned queueSize, unsigned jobsDone, unsigned errors):
+        Stats(unsigned activeThreads, unsigned queueSize, unsigned jobsDone, unsigned errors, bool stalled):
             activeThreads(activeThreads),
             queueSize(queueSize),
             jobsDone(jobsDone),
-            errors(errors) {
+            errors(errors),
+            stalled(stalled) {
         }
 
         /** Simple pretty print.
@@ -143,7 +146,7 @@ public:
 
       Blocks if the queue is too large and only adds the request when done.
      */
-    static void Schedule(JOB const & job) {
+    static void Schedule(JOB const & job, Worker * sender) {
         std::unique_lock<std::mutex> g(m_);
         while (jobs_.size() > queueLimit_)
             canAdd_.wait(g);
@@ -165,7 +168,8 @@ public:
      */
     static Stats Statistic() {
         std::lock_guard<std::mutex> g(m_);
-        return Stats(activeThreads_, jobs_.size(), jobsDone_, errors_);
+        bool stalled = stalled_;
+        return Stats(activeThreads_, jobs_.size(), jobsDone_, errors_, stalled_);
     }
 
     static unsigned QueueLength() {
@@ -194,7 +198,7 @@ protected:
         if (queueLimit_ == 0 or jobs_.size() >= queueLimit_)
             processAndCheck(job);
         else
-            Schedule(job);
+            Schedule(job, this);
     }
 
     void activate() {
@@ -260,6 +264,7 @@ protected:
     static unsigned activeThreads_;
     static unsigned jobsDone_;
     static unsigned errors_;
+    static bool stalled_;
     static std::mutex m_;
     static std::condition_variable cv_;
     static std::condition_variable canAdd_;
@@ -276,6 +281,9 @@ unsigned QueueWorker<JOB>::jobsDone_ = 0;
 
 template<typename JOB>
 unsigned QueueWorker<JOB>::errors_ = 0;
+
+template<typename JOB>
+bool QueueWorker<JOB>::stalled_ = 0;
 
 template<typename JOB>
 std::mutex QueueWorker<JOB>::m_;

@@ -13,7 +13,7 @@ void Crawler::process(CrawlerJob const & job) {
     std::string url = projectUrl(job.path);
     // if the directory is not empty, create job for the tokenizer
     if (not url.empty()) {
-        Tokenizer::Schedule(TokenizerJob(new ClonedProject(pid_++, url, 0)));
+        Tokenizer::Schedule(TokenizerJob(new ClonedProject(pid_++, url, 0)), this);
     // otherwise recursively scan all its subdirectories
     } else {
         struct dirent * ent;

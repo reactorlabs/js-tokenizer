@@ -64,6 +64,7 @@ void parseArguments(int argc, char * argv[]) {
 
 void displayStats(double duration) {
     Worker::Stats c = Crawler::Statistic();
+    Worker::Stats d = Downloader::Statistic();
     Worker::Stats t = Tokenizer::Statistic();
     Worker::Stats m = Merger::Statistic();
     Worker::Stats w = Writer::Statistic();
@@ -73,6 +74,7 @@ void displayStats(double duration) {
 
     std::cout << "Active threads " << Worker::NumActiveThreads() << std::endl;
     std::cout << "Crawler        " << c << std::endl;
+    std::cout << "Downloader     " << d << std::endl;
     std::cout << "Tokenizer      " << t << std::endl;
     std::cout << "Merger         " << m << std::endl;
     std::cout << "Writer         " << w << std::endl << std::endl;
@@ -120,7 +122,7 @@ void tokenize(int argc, char * argv[]) {
     std::string outdir = argv[2];
 
     for (unsigned i = 3; i < argc; ++i)
-        Crawler::Schedule(CrawlerJob(argv[i]));
+        Crawler::Schedule(CrawlerJob(argv[i]), nullptr);
 
     start = std::chrono::high_resolution_clock::now();
 
@@ -153,21 +155,22 @@ void downloaderStatistics() {
 /** Download the stuff from the repo and tokenize it on the fly.
  */
 void download(int argc, char * argv[]) {
-    CSVParser::Schedule("/home/peta/sourcerer/projects.small.csv");
+    CSVParser::Schedule("/home/peta/sourcerer/projects.small.csv", nullptr);
     CSVParser::SetLanguage("JavaScript");
 
     Downloader::SetKeepWhenDone(true);
     Downloader::SetDownloadDir("/home/peta/sourcerer/downloaded");
     Downloader::Initialize();
 
+
+    start = std::chrono::high_resolution_clock::now();
     Worker::InitializeThreads<CSVParser>(1);
     Worker::InitializeThreads<Downloader>(1);
+    Worker::InitializeThreads<Tokenizer>(1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     do {
-        downloaderStatistics();
-
-
-
-    } while (true);
+        displayStats(secondsSince(start));
+    } while (not Worker::WaitForFinished(1000));
 
 }
 

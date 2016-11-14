@@ -11,7 +11,6 @@ std::mutex Worker::doneM_;
 std::condition_variable Worker::allDone_;
 std::atomic_uint Worker::numThreads_;
 
-
 std::ostream & operator << (std::ostream & s, Worker::Stats const & stats) {
     s << "active " << std::setw(2) << stats.activeThreads
       << " queue " << std::setw(8) << stats.queueSize

@@ -63,7 +63,6 @@ private:
         unsigned id;
         unsigned count;
 
-
         /** When new token info is created, set its count to zero and assign new id.
          */
         TokenInfo():
@@ -71,13 +70,11 @@ private:
             count(0) {
         }
 
-        /** Increases the count of the token
+        /** Increases the number of token occurences. */
         unsigned inc() {
             ++count;
             return id;
         }
-
-
 
         // no need to be atomic - the map has to be locked for access anyways
         static unsigned id_;
@@ -139,7 +136,6 @@ private:
     static std::atomic_uint fid_;
     static unsigned pid_;
 
-    static StopClones stopClones_;
     static std::unordered_map<std::string, CloneInfo> clones_;
 
 

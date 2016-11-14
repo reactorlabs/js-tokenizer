@@ -72,7 +72,7 @@ void CSVParser::process(std::string const & value) {
                     if (not ClonedProject::isForked(row_)) {
                         ++validProjects_;
                         // pass the project to the downloader
-                        Downloader::Schedule(new ClonedProject(row_));
+                        Downloader::Schedule(new ClonedProject(row_), this);
                     } else {
                         ++forkedProjects_;
                     }
@@ -81,10 +81,6 @@ void CSVParser::process(std::string const & value) {
                 }
             }
         }
-
-
-
     }
-    // TODO check how the last row would behave
     f_.close();
 }

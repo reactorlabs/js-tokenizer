@@ -10,16 +10,12 @@
  */
 class JSTokenizer {
 public:
-    static void tokenize(TokenizedFile * f) {
-        JSTokenizer t(f);
-        t.loadEntireFile();
-        t.tokenize();
-        //f->updateFileStats(t.data_);
-    }
 
-    static void Tokenize(TokenizedFile & f, std::string const & contents) {
-        JSTokenizer t(&f);
-        t.data_ = contents;
+    static void Tokenize(TokenizedFile * f, std::string && contents) {
+        JSTokenizer t(f);
+        f->tokenizer = TokenizedFile::Tokenizer::JavaScript;
+        t.data_ = std::move(contents);
+        t.checkData();
         t.pos_ = 0;
         t.tokenize();
         //f.updateFileStats(t.data_);
@@ -168,7 +164,7 @@ private:
     void convertUTF16le();
     void convertUTF16be();
 
-    void loadEntireFile();
+    void checkData();
 
     std::string data_;
     unsigned pos_;

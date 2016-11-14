@@ -133,20 +133,6 @@ void GenericTokenizer::tokenize() {
     addToken(start, tokenLength_);
 }
 
-void GenericTokenizer::loadEntireFile() {
-    std::ifstream s(f_.path(), std::ios::in | std::ios::binary);
-    if (not s.good())
-        throw STR("Unable to open file " << f_.path());
-    s.seekg(0, std::ios::end);
-    data_.resize(s.tellg());
-    s.seekg(0, std::ios::beg);
-    s.read(& data_[0], data_.size());
-    s.close();
-    if (data_.size() >= 4 and data_[0] == 'P' and data_[1] =='K' and data_[2] == '\003' and data_[3] == '\004')
-        throw STR("File " << f_.path() << " seems to be archive");
-}
-
-
 
 
 

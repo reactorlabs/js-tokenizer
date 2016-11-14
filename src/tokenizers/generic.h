@@ -10,17 +10,20 @@
 
 class GenericTokenizer {
 public:
-    static void tokenize(TokenizedFile * f) {
+
+    static void Tokenize(TokenizedFile * f, std::string && contents) {
         GenericTokenizer t(f);
-        t.loadEntireFile();
+        t.data_ = std::move(contents);
+        t.pos_ = 0;
         t.tokenize();
-        //f->updateFileStats(t.data_);
     }
+
 
 private:
 
     GenericTokenizer(TokenizedFile * f):
         f_(*f) {
+        f_.tokenizer = TokenizedFile::Tokenizer::Generic;
     }
 
     bool eof();
@@ -33,12 +36,6 @@ private:
 
 
     void tokenize();
-
-
-
-    void loadEntireFile();
-
-
 
 
     TokenizedFile & f_;

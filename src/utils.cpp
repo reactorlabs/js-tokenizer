@@ -146,7 +146,8 @@ std::string time(double sec) {
 std::string exec(std::string const & what, std::string const & path ) {
     char buffer[128];
     std::string result = "";
-    std::string cmd = STR("cd \"" << path << "\" && " << what);
+    std::string cmd = STR("cd \"" << path << "\" && " << what << " 2>&1");
+    //std::cout << cmd << std::endl;
     std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
     if (not pipe)
         throw STR("Unable to execute command " << cmd);

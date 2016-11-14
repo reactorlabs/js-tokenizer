@@ -668,17 +668,7 @@ void JSTokenizer::convertUTF16le() {
     data_ = std::move(result);
 }
 
-void JSTokenizer::loadEntireFile() {
-    std::ifstream s(f_.path(), std::ios::in | std::ios::binary);
-    if (not s.good())
-        throw STR("Unable to open file " << f_.path());
-    s.seekg(0, std::ios::end);
-    data_.resize(s.tellg());
-    s.seekg(0, std::ios::beg);
-    s.read(& data_[0], data_.size());
-    s.close();
-    pos_ = 0;
-    // check the encoding BOMs
+void JSTokenizer::checkData() {
     if (data_.size() >= 2) {
         if ((data_[0] == (char) 0xff and data_[1] == (char)0xfe)) {
             convertUTF16le();
@@ -689,6 +679,4 @@ void JSTokenizer::loadEntireFile() {
     // UTF-8, skip if present
     if (data_.size() >= 3 and data_[0] == (char)0xef and data_[1] == (char) 0xbb and data_[2] == (char) 0xbf)
             pos_ = 3;
-    if (data_.size() >= 4 and data_[0] == 'P' and data_[1] =='K' and data_[2] == '\003' and data_[3] == '\004')
-        throw STR("File " << f_.path() << " seems to be archive");
 }

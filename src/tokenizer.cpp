@@ -8,6 +8,8 @@
 
 #include "db.h"
 
+#include "hashes/md5.h"
+
 
 #include "tokenizers/js.h"
 
@@ -18,10 +20,12 @@
 
 std::atomic_uint Tokenizer::fid_(0);
 
-std::atomic_uint Tokenizer::jsErrors_(0);
+Tokenizer::Tokenizers Tokenizer::tokenizers_ = Tokenizer::Tokenizers::Generic;
+
 
 void Tokenizer::process(TokenizerJob const & job) {
     ClonedProject * p = job.project;
+    p->attach();
     // first, check if the directory already contains the file with last dates
     std::ifstream cdates(STR(p->path() << "/cdate.js.tokenizer.txt"));
     // if the file does not exist, create it first by running git
@@ -48,28 +52,79 @@ void Tokenizer::process(TokenizerJob const & job) {
                 tokenize(job.project, tmp, date);
         }
     }
-    throw STR("NOT IMPLEMENTED");
     // project bookkeeping, so that floating projects are deleted when all their files are written and they are no longer needed
-    //--job.project->handles_;
+    p->release();
 }
 
 void Tokenizer::tokenize(ClonedProject * project, std::string const & relPath, int cdate) {
-    // TODO deal with different tokenizers being selectable programatically
     TokenizedFile * tf = new TokenizedFile(project, ++fid_, relPath);
     if (isFile(tf->path())) {
         Worker::Log(STR("tokenizing " << tf->path()));
-        GenericTokenizer::tokenize(tf);
 
-        // JSTokenizer::tokenize(tf);
+        // open the file and load it into the data string
+        std::ifstream s(tf->path(), std::ios::in | std::ios::binary);
+        if (not s.good())
+            throw STR("Unable to open file " << tf->path());
+        s.seekg(0, std::ios::end);
+        std::string data;
+        data.resize(s.tellg());
+        s.seekg(0, std::ios::beg);
+        s.read(& data[0], data.size());
+        s.close();
 
-        tf->createdDate = cdate;
+
+        // check the file data appears to be valid
+        if (data.size() >= 4 and data[0] == 'P' and data[1] =='K' and data[2] == '\003' and data[3] == '\004')
+            throw STR("File " << tf->path() << " seems to be archive");
+
+        // set total number of bytes and file hash
+        tf->bytes = data.size();
+
+        MD5 md5;
+        md5.add(data.c_str(), data.size());
+        tf->fileHash = md5.getHash();
+
+        // since we may have more than one tokenizer, we might need a vector
+        std::vector<TokenizedFile *> results;
+
+        switch (tokenizers_) {
+            case Tokenizers::Generic:
+                results.push_back(tf);
+                GenericTokenizer::Tokenize(tf, std::move(data));
+                break;
+            case Tokenizers::GenericAndJs: {
+                TokenizedFile *tf2 = new TokenizedFile(*tf);
+                std::string data2 = data;
+                GenericTokenizer::Tokenize(tf2, std::move(data2));
+                // fallthrough to JS only which adds the JS
+            }
+            case Tokenizers::JavaScript:
+                results.push_back(tf);
+                GenericTokenizer::Tokenize(tf, std::move(data));
+                break;
+        }
+
+        // mark as processed so that we do not show weird counters
 
         processedBytes_ += tf->bytes;
         ++processedFiles_;
-        if (tf->errors > 0)
-            ++jsErrors_;
-        Merger::Schedule(MergerJob(tf));
+
+        // for any tokenized file, calculate its tokens hash and submit to the merger
+
+        for (TokenizedFile * f : results) {
+            MD5 md5;
+            for (auto i : f->tokens) {
+                md5.add(i.first.c_str(), i.first.size());
+                md5.add(& i.second, sizeof(i.second));
+            }
+            f->tokensHash = md5.getHash();
+
+            // attach to the project for this particular file and submit to merger
+            f->project->attach();
+            Merger::Schedule(MergerJob(f), this);
+        }
     } else {
+        // TODO some better error here
         delete tf;
     }
 }
