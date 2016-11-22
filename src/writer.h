@@ -1,3 +1,4 @@
+#ifdef HAHA
 #include <fstream>
 
 #include "worker.h"
@@ -67,3 +68,4 @@ private:
 
 };
 
+#endif

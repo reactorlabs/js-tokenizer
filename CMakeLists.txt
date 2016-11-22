@@ -13,4 +13,5 @@ file(GLOB_RECURSE SRC_LIST "src/*.h" "src/*.cpp" "../notes.mkd" "../data/dataset
 
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 target_link_libraries(${PROJECT_NAME} ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(${PROJECT_NAME} mysqlclient)
 

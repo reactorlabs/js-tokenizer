@@ -13,7 +13,7 @@ public:
 
     static void Tokenize(TokenizedFile * f, std::string && contents) {
         JSTokenizer t(f);
-        f->tokenizer = TokenizedFile::Tokenizer::JavaScript;
+        f->tokenizer = TokenizerType::JavaScript;
         t.data_ = std::move(contents);
         t.checkData();
         t.pos_ = 0;

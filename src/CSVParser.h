@@ -12,7 +12,7 @@
 class CSVParser : public QueueWorker<std::string> {
 public:
     CSVParser(unsigned index):
-        QueueWorker<std::string>(STR("CSV_PARSER " << index)) {
+        QueueWorker<std::string>("CSV_PARSER", index) {
     }
 
     static void SetLanguage(std::string const & value) {

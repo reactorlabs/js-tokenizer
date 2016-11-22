@@ -133,6 +133,7 @@ double secondsSince(std::chrono::high_resolution_clock::time_point start) {
 }
 
 /** Nice time printer.
+
  */
 std::string time(double sec) {
     unsigned s = static_cast<unsigned>(sec);

@@ -20,7 +20,7 @@ struct CrawlerJob {
 class Crawler : public QueueWorker<CrawlerJob> {
 public:
     Crawler(unsigned index):
-        QueueWorker<CrawlerJob>(STR("CRAWLER " << index)) {
+        QueueWorker<CrawlerJob>("CRAWLER", index) {
     }
 
     static void initializeWorkers(unsigned num);

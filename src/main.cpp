@@ -10,12 +10,32 @@
 #include "crawler.h"
 #include "tokenizer.h"
 #include "merger.h"
-#include "writer.h"
+#include "DBWriter.h"
 
 #include "escape_codes.h"
 
 std::chrono::high_resolution_clock::time_point start;
 std::chrono::high_resolution_clock::time_point end;
+
+
+Tokenizer::Tokenizers tx = Tokenizer::Tokenizers::Generic;
+unsigned dt = 1;
+unsigned ct = 1;
+unsigned tt = 1;
+unsigned mt = 1;
+unsigned wt = 1;
+
+unsigned dq = 10000;
+unsigned cq = 10000;
+unsigned tq = 10000;
+unsigned mq = 10000;
+unsigned wq = 10000;
+
+std::string dbHost = "localhost";
+std::string dbUser = "sourcerer";
+std::string dbPass = "js";
+std::string dbName = "bigdata";
+
 
 
 
@@ -27,10 +47,15 @@ void help() {
     std::cout << "tokenizer ACTION {COMMON_ARGS} {ACTION_ARGS}" << std::endl << std::endl;
     std::cout << "Where COMMON_ARGS stands for the following" << std::endl << std::endl;
 
-    std::cout << "-v | --verbose     ---   enables verbose output" << std::endl;
+    std::cout << "-tx=js             ---   enables only the JavaScript specific tokenizer" << std::endl;
+    std::cout << "-tx=js+generic     ---   enables the generic and the JavaScript specific tokenizer" << std::endl;
+
     std::cout << "-dt=N              ---   specifies number of downloader threads" << std::endl;
     std::cout << "-ct=N              ---   specifies number of crawler threads" << std::endl;
-    std::cout << "-tt=N              ---   specifies number of tokenier threads" << std::endl;
+    std::cout << "-tt=N              ---   specifies number of tokenizer threads" << std::endl;
+
+
+
     std::cout << "-mt=N              ---   specifies number of merger threads" << std::endl;
     std::cout << "-wt=N              ---   specifies number of writer threads" << std::endl;
 
@@ -40,8 +65,6 @@ void help() {
     std::cout << "-mq=N              ---   specifies max size of merger queue (and opened files)" << std::endl;
     std::cout << "-wq=N              ---   specifies max size of writer queue (and opened files)" << std::endl;
 
-    std::cout << "-tt=js             ---   enables only the JavaScript specific tokenizer" << std::endl;
-    std::cout << "-tt=js+generic     ---   enables the generic and the JavaScript specific tokenizer" << std::endl;
 
 
     std::cout << "And ACTION & corresponding ACTION_ARGS stand for:" << std::endl << std::endl;
@@ -61,8 +84,34 @@ void parseArguments(int argc, char * argv[]) {
 }
 
 
-
+/** Displays the statistics from the workers.  */
 void displayStats(double duration) {
+    static unsigned expectedProjs = 2300000;
+
+    std::vector<QueueWorkerStats> stats;
+    stats.push_back(CSVParser::Statistic());
+    stats.push_back(Crawler::Statistic());
+    stats.push_back(Downloader::Statistic());
+    stats.push_back(Tokenizer::Statistic());
+    stats.push_back(Merger<TokenizerType::Generic>::Statistic());
+    stats.push_back(Merger<TokenizerType::JavaScript>::Statistic());
+    stats.push_back(Writer<TokenizerType::Generic>::Statistic());
+    stats.push_back(Writer<TokenizerType::JavaScript>::Statistic());
+    Worker::LockOutput();
+    std::cout << eraseDown;
+    std::cout << "Elapsed    " << time(duration) << " [h:mm:ss]" << std::endl << std::endl;
+    // analysis for different workers
+    std::cout << "Worker                  Status  T/Active   %  Queue       Done Errors   %     Files    Bytes " << std::endl;
+    std::cout << "----------------------- ------- -------- --- ------ ---------- ------ --- --------- ---------" << std::endl;
+
+    for (QueueWorkerStats & s: stats) {
+        if (s.started > 0)
+            std::cout << s << std::endl;
+    }
+
+    Worker::UnlockOutput();
+
+#ifdef HAHA
     Worker::Stats c = Crawler::Statistic();
     Worker::Stats d = Downloader::Statistic();
     Worker::Stats t = Tokenizer::Statistic();
@@ -103,11 +152,13 @@ void displayStats(double duration) {
     std::cout << "JS errors         " << Tokenizer::jsErrors() << pct(Tokenizer::jsErrors(), Tokenizer::ProcessedFiles()) << std::endl;
     std::cout << cursorUp(16);
     Worker::UnlockOutput();
+#endif
 }
 
 
 
 void tokenize(int argc, char * argv[]) {
+#ifdef HAHA
     if (argc < 2) {
         help();
         throw STR("Invalid number of arguments");
@@ -144,6 +195,7 @@ void tokenize(int argc, char * argv[]) {
     Worker::Log("ALL DONE");
     std::ofstream tokens(STR(outdir << "/tokens.txt"));
     Merger::writeGlobalTokens(tokens);
+#endif
 }
 
 void downloaderStatistics() {
@@ -158,20 +210,42 @@ void download(int argc, char * argv[]) {
     CSVParser::Schedule("/home/peta/sourcerer/projects.small.csv", nullptr);
     CSVParser::SetLanguage("JavaScript");
 
-    Downloader::SetKeepWhenDone(true);
+    Downloader::SetKeepWhenDone(false);
     Downloader::SetDownloadDir("/home/peta/sourcerer/downloaded");
     Downloader::Initialize();
 
 
+    DBConnection::setConnection(dbHost, dbUser, dbPass, dbName);
+    DBConnection::createDatabase(true);
+    Writer<TokenizerType::Generic>::InitializeSourcererOutput("/home/peta/sourcerer/output");
+    Writer<TokenizerType::JavaScript>::InitializeSourcererOutput("/home/peta/sourcerer/output");
+
+    Writer<TokenizerType::Generic>::SetQueueLimit(100000);
+    Writer<TokenizerType::JavaScript>::SetQueueLimit(100000);
+
     start = std::chrono::high_resolution_clock::now();
     Worker::InitializeThreads<CSVParser>(1);
-    Worker::InitializeThreads<Downloader>(1);
-    Worker::InitializeThreads<Tokenizer>(1);
+    Worker::InitializeThreads<Downloader>(10);
+    Worker::InitializeThreads<Tokenizer>(4);
+    Worker::InitializeThreads<Merger<TokenizerType::Generic>>(2);
+    Worker::InitializeThreads<Merger<TokenizerType::JavaScript>>(2);
+    Worker::InitializeThreads<Writer<TokenizerType::Generic>>(10);
+    Worker::InitializeThreads<Writer<TokenizerType::JavaScript>>(10);
+
+
+
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
     do {
         displayStats(secondsSince(start));
     } while (not Worker::WaitForFinished(1000));
+    Worker::Print(STR(std::endl << std::endl));
 
+    Merger<TokenizerType::Generic>::Schedule(MergerJob<TokenizerType::Generic>(nullptr), nullptr);
+    Merger<TokenizerType::JavaScript>::Schedule(MergerJob<TokenizerType::JavaScript>(nullptr), nullptr);
+    do {
+        displayStats(secondsSince(start));
+    } while (not Worker::WaitForFinished(1000));
+    Worker::Print(STR(std::endl << std::endl << "ALL DONE. " << std::endl));
 }
 
 

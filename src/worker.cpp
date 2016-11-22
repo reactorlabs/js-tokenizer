@@ -5,20 +5,38 @@
 
 std::mutex Worker::m_;
 
+bool Worker::stalled_ = false;
+
 thread_local Worker * Worker::worker_ = nullptr;
 
 std::mutex Worker::doneM_;
 std::condition_variable Worker::allDone_;
 std::atomic_uint Worker::numThreads_;
 
-std::ostream & operator << (std::ostream & s, Worker::Stats const & stats) {
-    s << "active " << std::setw(2) << stats.activeThreads
-      << " queue " << std::setw(8) << stats.queueSize
-      << " done " << std::setw(9) << stats.jobsDone
-      << " errors " << std::setw(0) << stats.errors;
+//std::cout << "Worker                  Status  T/Active %   Queue  Done       Errors %   Files    Bytes " << std::endl;
+//std::cout << "----------------------- ------- -------- --- ------ ---------- ------ --- ---------" << std::endl;
+//                                      STALLED                                           999999999
+
+std::ostream & operator << (std::ostream & s, QueueWorkerStats const & stats) {
+    s << std::setw(24) << std::left << stats.name;
+    std::string status = "        ";
+    if (stats.stalled)
+        status = "STALLED ";
+    else if (stats.active == 0)
+        status = "IDLE    ";
+    s << status;
+    s << std::setw(8) << std::left << STR(stats.started << "/" << stats.active);
+    s << std::setw(4) << std::right << pct(stats.active,stats.started);
+    s << std::setw(7) << stats.queue;
+    s << std::setw(11) << stats.done;
+    s << std::setw(7) << stats.errors;
+    s << std::setw(4) << pct(stats.errors, stats.done);
+    if (stats.files > 0)
+        s << std::setw(10) << stats.files;
+    else
+        s << "          ";
     return s;
 }
-
 
 void Worker::Error(std::string const & msg) {
    std::lock_guard<std::mutex> g(m_);

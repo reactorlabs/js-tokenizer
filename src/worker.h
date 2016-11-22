@@ -13,43 +13,6 @@
  */
 class Worker {
 public:
-    /** Simple statistics for each worker group.
-     */
-    struct Stats {
-        /** Currently active threads, i.e. those not waiting for empty queue.
-         */
-        unsigned activeThreads;
-        /** Current queue size.
-         */
-        unsigned queueSize;
-        /** Jobs done so far.
-         */
-        unsigned jobsDone;
-
-        /** Number of jobs that ended with errors.
-         */
-        unsigned errors;
-
-        /** True if the threadgroup has been stalled since stats were obtained last time. */
-        bool stalled;
-
-        bool finished() {
-            return queueSize == 0 and activeThreads == 0;
-        }
-
-        Stats(unsigned activeThreads, unsigned queueSize, unsigned jobsDone, unsigned errors, bool stalled):
-            activeThreads(activeThreads),
-            queueSize(queueSize),
-            jobsDone(jobsDone),
-            errors(errors),
-            stalled(stalled) {
-        }
-
-        /** Simple pretty print.
-         */
-        friend std::ostream & operator << (std::ostream & s, Stats const & stats);
-
-    };
 
     /* Locked output routines for different kinds of messages.
      */
@@ -91,7 +54,13 @@ public:
         }
     }
 
+    void stall() {
+        stalled_ = true;
+    }
+
 protected:
+
+
     /** Each worker must have a name.
      */
     Worker(std::string const & name):
@@ -124,11 +93,47 @@ private:
 
     static std::mutex m_;
 
+    static bool stalled_;
+
     static std::mutex doneM_;
     static std::condition_variable allDone_;
     static std::atomic_uint numThreads_;
 
 };
+
+
+class QueueWorkerStats {
+public:
+    std::string name;
+    unsigned started;
+    unsigned active;
+    unsigned queue;
+    unsigned done;
+    bool stalled;
+    unsigned errors;
+    unsigned files;
+    unsigned long bytes;
+
+    QueueWorkerStats(std::string name, unsigned started, unsigned active, unsigned queue, unsigned done, bool stalled, unsigned errors, unsigned files, unsigned bytes):
+        name(name),
+        started(started),
+        active(active),
+        queue(queue),
+        done(done),
+        stalled(stalled),
+        errors(errors),
+        files(files),
+        bytes(bytes) {
+    }
+
+};
+
+std::ostream & operator << (std::ostream & s, QueueWorkerStats const & stats);
+
+
+
+
+
 
 template<typename JOB>
 class QueueWorker : public Worker {
@@ -148,8 +153,10 @@ public:
      */
     static void Schedule(JOB const & job, Worker * sender) {
         std::unique_lock<std::mutex> g(m_);
-        while (jobs_.size() > queueLimit_)
+        while (jobs_.size() > queueLimit_) {
+            sender->stall();
             canAdd_.wait(g);
+        }
         jobs_.push(job);
         cv_.notify_one();
     }
@@ -157,6 +164,7 @@ public:
     /** Run method of the thread.
      */
     void operator () () {
+        ++startedThreads_;
         Worker::Log("Started...");
         while (true) {
             JOB job = getJob();
@@ -166,10 +174,11 @@ public:
 
     /** Returns stats about current workers.
      */
-    static Stats Statistic() {
+    static QueueWorkerStats Statistic() {
         std::lock_guard<std::mutex> g(m_);
         bool stalled = stalled_;
-        return Stats(activeThreads_, jobs_.size(), jobsDone_, errors_, stalled_);
+        stalled_ = false;
+        return QueueWorkerStats(className_, startedThreads_,activeThreads_,jobs_.size(),jobsDone_,stalled, errors_,processedFiles_,processedBytes_);
     }
 
     static unsigned QueueLength() {
@@ -182,12 +191,16 @@ public:
     }
 
 protected:
-    QueueWorker(std::string const & name):
-        Worker(name) {
+    friend class QueueWorkerStats;
+
+    QueueWorker(std::string const & name, unsigned index):
+        Worker(STR(name << " " << index)) {
         // bump up the number of active threads
         m_.lock();
         activate();
+        className_ = name;
         m_.unlock();
+
     }
 
     /** Internal scheduler.
@@ -261,17 +274,24 @@ protected:
         return result;
     }
 
+    static std::atomic_uint startedThreads_;
     static unsigned activeThreads_;
     static unsigned jobsDone_;
     static unsigned errors_;
-    static bool stalled_;
+    static std::atomic_uint processedFiles_;
+    static std::atomic_ulong processedBytes_;
     static std::mutex m_;
     static std::condition_variable cv_;
     static std::condition_variable canAdd_;
     static std::queue<JOB> jobs_;
 
+    static std::string className_;
+
     static unsigned queueLimit_;
 };
+
+template<typename JOB>
+std::atomic_uint QueueWorker<JOB>::startedThreads_(0);
 
 template<typename JOB>
 unsigned QueueWorker<JOB>::activeThreads_ = 0;
@@ -283,7 +303,10 @@ template<typename JOB>
 unsigned QueueWorker<JOB>::errors_ = 0;
 
 template<typename JOB>
-bool QueueWorker<JOB>::stalled_ = 0;
+std::atomic_uint QueueWorker<JOB>::processedFiles_;
+
+template<typename JOB>
+std::atomic_ulong QueueWorker<JOB>::processedBytes_;
 
 template<typename JOB>
 std::mutex QueueWorker<JOB>::m_;
@@ -301,34 +324,6 @@ template<typename JOB>
 unsigned QueueWorker<JOB>::queueLimit_ = 1000;
 
 template<typename JOB>
-class QueueProcessor : public QueueWorker<JOB> {
-public:
+std::string QueueWorker<JOB>::className_ = "???";
 
-    static unsigned ProcessedFiles() {
-        return processedFiles_;
-    }
-
-    static unsigned long ProcessedBytes() {
-        return processedBytes_;
-    }
-
-    static double ProcessedMBytes() {
-        return processedBytes_ / 1048576.0;
-    }
-
-
-protected:
-    QueueProcessor(std::string const & name):
-        QueueWorker<JOB>(name) {
-    }
-
-    static std::atomic_uint processedFiles_;
-    static std::atomic_ulong processedBytes_;
-};
-
-template<typename JOB>
-std::atomic_uint QueueProcessor<JOB>::processedFiles_;
-
-template<typename JOB>
-std::atomic_ulong QueueProcessor<JOB>::processedBytes_;
 

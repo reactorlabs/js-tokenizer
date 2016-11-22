@@ -71,6 +71,7 @@ void CSVParser::process(std::string const & value) {
                 if (not ClonedProject::isDeleted(row_)) {
                     if (not ClonedProject::isForked(row_)) {
                         ++validProjects_;
+                        ++processedFiles_;
                         // pass the project to the downloader
                         Downloader::Schedule(new ClonedProject(row_), this);
                     } else {

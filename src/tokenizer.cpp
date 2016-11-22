@@ -20,12 +20,11 @@
 
 std::atomic_uint Tokenizer::fid_(0);
 
-Tokenizer::Tokenizers Tokenizer::tokenizers_ = Tokenizer::Tokenizers::Generic;
+Tokenizer::Tokenizers Tokenizer::tokenizers_ = Tokenizer::Tokenizers::GenericAndJs;
 
 
 void Tokenizer::process(TokenizerJob const & job) {
     ClonedProject * p = job.project;
-    p->attach();
     // first, check if the directory already contains the file with last dates
     std::ifstream cdates(STR(p->path() << "/cdate.js.tokenizer.txt"));
     // if the file does not exist, create it first by running git
@@ -36,7 +35,8 @@ void Tokenizer::process(TokenizerJob const & job) {
         assert(cdates.good() and "It should really exist now");
     }
     // now that we know the project is valid, add the project to the database
-    Db::addProject(p);
+    // TODO add project here
+    // Db::addProject(p);
     // let's parse the output now
     int date = 0;
     while (not cdates.eof()) {
@@ -80,9 +80,7 @@ void Tokenizer::tokenize(ClonedProject * project, std::string const & relPath, i
         // set total number of bytes and file hash
         tf->bytes = data.size();
 
-        MD5 md5;
-        md5.add(data.c_str(), data.size());
-        tf->fileHash = md5.getHash();
+        tf->fileHash = data;
 
         // since we may have more than one tokenizer, we might need a vector
         std::vector<TokenizedFile *> results;
@@ -96,11 +94,12 @@ void Tokenizer::tokenize(ClonedProject * project, std::string const & relPath, i
                 TokenizedFile *tf2 = new TokenizedFile(*tf);
                 std::string data2 = data;
                 GenericTokenizer::Tokenize(tf2, std::move(data2));
+                results.push_back(tf2);
                 // fallthrough to JS only which adds the JS
             }
             case Tokenizers::JavaScript:
                 results.push_back(tf);
-                GenericTokenizer::Tokenize(tf, std::move(data));
+                JSTokenizer::Tokenize(tf, std::move(data));
                 break;
         }
 
@@ -117,11 +116,18 @@ void Tokenizer::tokenize(ClonedProject * project, std::string const & relPath, i
                 md5.add(i.first.c_str(), i.first.size());
                 md5.add(& i.second, sizeof(i.second));
             }
-            f->tokensHash = md5.getHash();
+            f->tokensHash = md5;
 
             // attach to the project for this particular file and submit to merger
             f->project->attach();
-            Merger::Schedule(MergerJob(f), this);
+            switch (f->tokenizer) {
+                case TokenizerType::Generic:
+                    Merger<TokenizerType::Generic>::Schedule(f, this);
+                    break;
+                case TokenizerType::JavaScript:
+                    Merger<TokenizerType::JavaScript>::Schedule(f, this);
+                    break;
+            }
         }
     } else {
         // TODO some better error here

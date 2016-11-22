@@ -23,7 +23,7 @@ private:
 
     GenericTokenizer(TokenizedFile * f):
         f_(*f) {
-        f_.tokenizer = TokenizedFile::Tokenizer::Generic;
+        f_.tokenizer = TokenizerType::Generic;
     }
 
     bool eof();

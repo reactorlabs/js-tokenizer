@@ -2,21 +2,30 @@
 
 #include <string>
 
+namespace sql {
+    class Connection;
+}
+
 
 class ClonedProject;
 class TokenizedFile;
 
 class Db {
 public:
+    Db(std::string const & host, std::string const & user, std::string const &password);
 
-    static void addProject(ClonedProject * project) {
+    void query(std::string const & query);
 
-    }
+    void addProject(ClonedProject * project);
 
-    static void addFile(TokenizedFile * file) {
+    void addFile(TokenizedFile * file);
 
-    }
 
+
+
+
+private:
+    sql::Connection * c_;
 };
 
 

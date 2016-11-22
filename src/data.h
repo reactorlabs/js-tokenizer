@@ -6,9 +6,217 @@
 #include <vector>
 #include <iostream>
 #include <atomic>
+#include <climits>
 
 #include "utils.h"
 #include "config.h"
+
+/** Describes a downloaded project.
+
+ */
+class ClonedProject {
+public:
+    int id;
+    std::string url;
+    unsigned created_at;
+
+    ClonedProject(std::vector<std::string> const & row):
+        id(std::stoi(row[0])),
+        url(row[1].substr(29)),
+        created_at(timestampFrom(row[6])),
+        handles_(1) {
+    }
+
+    ClonedProject(unsigned id, std::string const & url, unsigned created_at):
+        id(id),
+        url(url),
+        created_at(created_at),
+        handles_(1) {
+    }
+
+    /** Returns the url to be used to clone the project.
+     */
+    std::string cloneUrl() const {
+        return STR("http://github.com/" << url << ".git");
+    }
+
+    /** Returns the path where the project is cloned on local drive. */
+    std::string path() const;
+
+    void attach() {
+        ++handles_;
+    }
+
+    void release();
+
+    static std::string const & language(std::vector<std::string> const & row) {
+        return row[5];
+    }
+
+    static bool isDeleted(std::vector<std::string> const & row) {
+        return row[9] == "0";
+    }
+
+    static bool isForked(std::vector<std::string> const & row) {
+        return row[7] != "\\N";
+    }
+
+private:
+
+    std::atomic_uint handles_;
+
+};
+
+
+enum class TokenizerType {
+    Generic,
+    JavaScript,
+};
+
+inline std::ostream & operator << (std::ostream & s, TokenizerType t) {
+    switch (t) {
+        case TokenizerType::Generic:
+            s << "Generic";
+            break;
+        case TokenizerType::JavaScript:
+            s << "JavaScript";
+            break;
+    }
+    return s;
+}
+
+class TokenizedFile {
+public:
+    ClonedProject * project;
+    int id;
+
+    std::string relPath;
+
+    TokenizerType tokenizer;
+    unsigned totalTokens = 0;
+    unsigned errors = 0;
+    unsigned createdDate = 0;
+    unsigned loc = 0;
+    unsigned commentLoc = 0;
+    unsigned emptyLoc = 0;
+    unsigned bytes = 0;
+    unsigned whitespaceBytes = 0;
+    unsigned commentBytes = 0;
+    unsigned separatorBytes = 0;
+    unsigned tokenBytes = 0;
+    hash fileHash;
+    hash tokensHash;
+    bool fileHashUnique = false;
+
+    int cloneGroupId = -1;
+
+
+
+    std::unordered_map<std::string, unsigned> tokens;
+
+    void addToken(std::string const & token) {
+        ++totalTokens;
+        tokenBytes += token.size();
+        ++tokens[token];
+    }
+
+    void addSeparator(std::string const & separator) {
+        separatorBytes += separator.size();
+    }
+
+    void addSeparator(unsigned size) {
+        separatorBytes += size;
+    }
+
+    void addComment(std::string const & comment) {
+        commentBytes += comment.size();
+    }
+
+    void addComment(unsigned size) {
+        commentBytes += size;
+    }
+
+    void addWhitespace(char whitespace) {
+        ++whitespaceBytes;
+    }
+
+    void newline(bool commentOnly, bool empty) {
+        ++loc;
+        if (commentOnly)
+            if (empty)
+                ++emptyLoc;
+            else
+                ++commentLoc;
+    }
+
+    TokenizedFile(ClonedProject * p, unsigned id, std::string relPath):
+        project(p),
+        id(id),
+        relPath(relPath) {
+    }
+
+    std::string path() const {
+        return STR(project->path() << "/" << relPath);
+    }
+};
+
+
+
+struct CloneInfo {
+    int id;
+    int oldestId;
+    unsigned oldestTime;
+
+    CloneInfo():
+        id(-1),
+        oldestId(-1),
+        oldestTime(UINT_MAX) {
+    }
+
+    void updateWith(TokenizedFile &f) {
+        f.cloneGroupId = id;
+        if (id == -1)
+            id = f.id;
+        if (oldestTime > f.createdDate) {
+            oldestTime = f.createdDate;
+            oldestId = f.id;
+        }
+    }
+
+};
+
+// actually hash tokens too, 16 bytes is hard to beat with std::string
+
+struct TokenInfo {
+    int id;
+    unsigned textSize;
+    unsigned uses;
+
+    TokenInfo():
+        id(-1),
+        textSize(0),
+        uses(0) {
+    }
+
+    std::pair<unsigned, bool> updateWith(std::string const & text, unsigned uses) {
+        this->uses += uses;
+        if (this->uses == uses) {
+            textSize = static_cast<unsigned>(text.size());
+            return std::make_pair(id, true);
+        } else {
+            return std::make_pair(id, false);
+        }
+    }
+};
+
+
+
+
+
+
+
+
+
 
 #ifdef HAHA
 

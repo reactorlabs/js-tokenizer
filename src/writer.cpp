@@ -1,3 +1,15 @@
+#include "DBWriter.h"
+
+
+std::string DBConnection::host_;
+std::string DBConnection::user_;
+std::string DBConnection::pass_;
+std::string DBConnection::db_;
+
+
+
+#ifdef HAHA
+
 #include <thread>
 
 #include "utils.h"
@@ -80,3 +92,4 @@ void Writer::process(WriterJob const & job) {
 
 #endif
 }
+#endif
