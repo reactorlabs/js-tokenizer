@@ -1,4 +1,6 @@
 #include "utils.h"
+#ifdef HAHA
+
 
 #include "db.h"
 
@@ -48,3 +50,4 @@ void Db::addFile(TokenizedFile* file) {
 }
 
 
+#endif
