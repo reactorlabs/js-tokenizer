@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "../helpers.h"
 
 #include "../worker.h"
@@ -15,6 +17,11 @@ public:
     DownloaderJob(ClonedProject * ci):
         std::shared_ptr<ClonedProject>(ci) {
     }
+
+    friend std::ostream & operator << (std::ostream & s, DownloaderJob const & j) {
+        s << "Downloader job " << j->id << ", url: " << j->cloneUrl();
+        return s;
+    }
 };
 
 /** Errors are projects failed to download, or failed to obrain cdates.
@@ -29,6 +36,7 @@ public:
 
     static void SetDownloadDir(std::string const & value) {
         downloadDir_  = value;
+        createDirectory(value);
     }
 
     static void Initialize() {

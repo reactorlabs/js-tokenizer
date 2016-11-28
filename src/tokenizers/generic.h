@@ -5,198 +5,199 @@
 #include <cassert>
 #include <iostream>
 
+#include "../data.h"
 
-#include "../tokenizer.h"
-
-class GenericTokenizer {
+class BaseTokenizer {
 public:
-
-    static void Tokenize(TokenizedFile * f, std::string && contents) {
-        GenericTokenizer t(f);
-        t.data_ = std::move(contents);
-        t.pos_ = 0;
-        t.tokenize();
+    BaseTokenizer(std::string const & file, std::shared_ptr<TokenizedFile> tf):
+        file_(file),
+        tf_(tf),
+        tokens_(new TokensMap(tf)),
+        pos_(0) {
     }
 
+    virtual void tokenize()  = 0;
+
+    std::shared_ptr<TokensMap> tokensMap() {
+        return tokens_;
+    }
+
+protected:
+    bool eof() {
+        return pos_ >= file_.size();
+    }
+
+    char top() {
+        if (pos_ >= file_.size())
+            return 0;
+        if (file_[pos_] == '\r')
+            return '\n';
+        return file_[pos_];
+    }
+
+    void pop() {
+        if (pos_ >= file_.size())
+            return;
+        if (file_[pos_] == '\n' and peek(1) == '\r')
+            pos_ += 2;
+        else if (file_[pos_] == '\r' and peek(1) == '\n')
+            pos_ += 2;
+        else
+            ++pos_;
+    }
+
+    void pop(unsigned by) {
+        assert(by > 0);
+        while (by-- > 0)
+            pop();
+    }
+
+    char peek(int offset) {
+        if (pos_ + offset < 0 or pos_ + offset >= file_.size())
+            return 0;
+        return file_[pos_ + offset];
+    }
+
+    unsigned pos() {
+        return pos_;
+    }
+
+    void newline(bool isEmpty, bool isComment) {
+        ++tf_->lines;
+        if (not isEmpty)
+            ++tf_->sloc;
+        if (not isComment)
+            ++tf_->loc;
+    }
+
+    void addToken(unsigned start, unsigned length) {
+        if (length > 0)
+            ++tokens()[file_.substr(start, length)];
+    }
+
+    std::string substr(unsigned start, unsigned length) {
+        if (length == 0) {
+            assert(false);
+            return "";
+        }
+        return file_.substr(start, length);
+    }
+
+    TokenizedFile & tf() {
+        return * tf_;
+    }
+
+    TokensMap & tokens() {
+        return * tokens_;
+    }
+
+private:
+    std::string const & file_;
+    std::shared_ptr<TokenizedFile> tf_;
+    std::shared_ptr<TokensMap> tokens_;
+    unsigned pos_;
+};
+
+class GenericTokenizer : public BaseTokenizer {
+public:
+    static TokenizerKind const kind = TokenizerKind::Generic;
+
+    GenericTokenizer(std::string const & file, std::shared_ptr<TokenizedFile> tf):
+        BaseTokenizer(file, tf) {
+        tf->tokenizer = TokenizerKind::Generic;
+    }
+
+    void tokenize() override {
+        hasComment_ = false;
+        hasToken_ = false;
+        unsigned start = 0;
+        unsigned tokenLength_ = 0;
+        while (not eof()) {
+            if (top() == '/') {
+                // single line comment
+                if (peek(1) == '/') {
+                    pop(2);
+                    hasComment_ = true;
+                    while (not eof() and top() != '\n')
+                        pop();
+                // multi-line comment
+                } else if (peek(1) == '*') {
+                    pop(2);
+                    hasComment_ = true;
+                    while (not eof()) {
+                        if (top() == '*' and peek(1) == '/')
+                            break;
+                        pop();
+                    }
+                }
+            }
+            // the comment might have been the last thing
+            if (eof())
+                break;
+            switch (top()) {
+                case ';':
+                case '.':
+                case '[':
+                case ']':
+                case '(':
+                case ')':
+                case '~':
+                case '!':
+                case '-':
+                case '+':
+                case '&':
+                case '*':
+                case '/':
+                case '%':
+                case '<':
+                case '>':
+                case '^':
+                case '|':
+                case '?':
+                case '{':
+                case '}':
+                case '=':
+                case '#':
+                case ',':
+                case '"':
+                case '\\':
+                case ':':
+                case '$':
+                case '\'':
+                case '\t':
+                case ' ':
+                case '\r':
+                case '\n':
+                    addToken(start, tokenLength_);
+                    if (top() == '\n')
+                        newline();
+                    pop();
+                    start = pos();
+                    tokenLength_ = 0;
+                    break;
+                default:
+                    pop();
+                    ++tokenLength_;
+                    break;
+            }
+        }
+        addToken(start, tokenLength_);
+    }
 
 private:
 
-    GenericTokenizer(TokenizedFile * f):
-        f_(*f) {
-        f_.tokenizer = TokenizerType::Generic;
+    void newline() {
+        BaseTokenizer::newline(not (hasComment_ or hasToken_), hasComment_ and not hasToken_);
+        hasComment_ = false;
+        hasToken_ = false;
     }
 
-    bool eof();
-    char top();
-    void pop(unsigned by = 1);
-    char peek(int offset);
+    void addToken(unsigned start, unsigned length) {
+        BaseTokenizer::addToken(start, length);
+        hasToken_ = true;
+    }
 
-    void addToken(unsigned start, unsigned length);
-    void newline();
-
-
-    void tokenize();
-
-
-    TokenizedFile & f_;
-    std::string data_;
-
-    unsigned pos_;
+private:
     bool hasComment_;
     bool hasToken_;
-
 };
-
-
-
-
-
-
-
-
-# ifdef HAHA
-
-
-
-
-#include "../hashes/md5.h"
-
-#include "../old/utils.h"
-
-#include "../old/data.h"
-
-
-
-
-
-
-class Tokenizer {
-public:
-    /** Tokenizes the given file and updates its information.
-     */
-    static void tokenize(TokenizedFile * f) {
-        Tokenizer t(f);
-        t.tokenize();
-        f->calculateTokensHash();
-        f->fileHash_ = t.fileHash_.getHash();
-    }
-
-    /** Initializes the tokenizer's separator matching FSM.
-     */
-    static void initializeLanguage();
-
-
-private:
-
-    enum class Kind {
-#define GENERATE_COMMENT_KIND(START, END, NAME) NAME ## _start, NAME ## _end,
-#define GENERATE_LITERAL_KIND(START, ESCAPE, NAME) NAME ##_start, NAME ## _escape,
-        COMMENTS(GENERATE_COMMENT_KIND)
-        LITERALS(GENERATE_LITERAL_KIND)
-        none,
-    };
-
-    static bool isCommentKind(Kind k) {
-        // no need to deal with ends
-#define IS_COMMENT(START, END, NAME) if (k == Kind::NAME ##_start) return true;
-        COMMENTS(IS_COMMENT)
-        return false;
-    }
-
-    static bool isLiteralKind(Kind k) {
-        // no need to deal with ends
-#define IS_LITERAL(START, ESCAPE, NAME) if (k == Kind::NAME ##_start) return true;
-        LITERALS(IS_LITERAL)
-        return false;
-    }
-
-    /** Returns the corresponding end kind for comments or literals. */
-    static Kind kindEndFor(Kind k) {
-#define GENERATE_COMMENT_END_FOR(START, END, NAME) if (k == Kind::NAME ## _start) return Kind::NAME ## _end;
-#define GENERATE_LITERAL_END_FOR(START, ESCAPE, NAME) if (k == Kind::NAME ## _start) return Kind::NAME ## _start;
-        COMMENTS(GENERATE_COMMENT_END_FOR)
-        LITERALS(GENERATE_LITERAL_END_FOR)
-        return Kind::none;
-    }
-
-    /** Returns token that serves as an escape character for given literal kind, or the token itself so that comparison against Kind::none can be done.
-
-      This is ok because literal token can never be its own escape.
-     */
-    static Kind escapeFor(Kind k) {
-#define GENERATE_LITERAL_ESCAPE_FOR(START, ESCAPE, NAME) if (k == Kind::NAME ## _start) return Kind::NAME ## _escape;
-        LITERALS(GENERATE_LITERAL_ESCAPE_FOR)
-        return k;
-    }
-
-    class MatchStep;
-
-    Tokenizer(TokenizedFile * f):
-        f_(*f),
-        file_(f->absPath()) {
-        if (not file_.good())
-            throw STR("Unable to open file " << f->absPath());
-    }
-
-    /** Returns true if tokenize is inside a comment
-     */
-    bool inComment() const {
-#define GENERATE_COMMENT_END_CHECK(START, END, NAME) if (commentEnd_ == Kind::NAME ## _end) return true;
-        COMMENTS(GENERATE_COMMENT_END_CHECK)
-        return false;
-    }
-
-    /** Returns true if tokenize is inside a literal
-     */
-    bool inLiteral() const {
-#define GENERATE_LITERAL_END_CHECK(START, ESCAPE, NAME) if (commentEnd_ == Kind::NAME ## _start) return true;
-        LITERALS(GENERATE_LITERAL_END_CHECK)
-        return false;
-    }
-
-    /** Reads new character from the file. Converts line endings to `\n` where required.
-     */
-    char get();
-
-    /** Tokenizes the entire file.
-     */
-    void tokenize();
-
-    /** Processes given match in the temporary string and updates the tokens and the string accordingly.
-     */
-    void processMatch(MatchStep * match, unsigned matchPos, std::string & temp);
-
-    /** Adds given token to the list of tokens.
-
-      If the tokenizer is currently inside comments, adds the token's size to commentBytes and does not add it to the tokens.
-     */
-    void addToken(std::string const & token);
-
-
-
-
-    static MatchStep * initialState_;
-
-    TokenizedFile & f_;
-    std::ifstream file_;
-
-    MD5 fileHash_;
-
-    bool inComment_;
-
-    /** Either CommentKind::invalid if tokenization is not inside a comment, or comment kind to end the comment if inside comment.
-     */
-    Kind commentEnd_;
-
-    /** True if there was only whitespace in the last line.
-     */
-    bool emptyLine_;
-
-    /** True if the line contains only comments.
-     */
-    bool commentLine_;
-};
-
-
-
-#endif

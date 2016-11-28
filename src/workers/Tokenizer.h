@@ -23,7 +23,15 @@ public:
 class Tokenizer : public Worker<TokenizerJob> {
 public:
     Tokenizer(unsigned index):
-        Worker<TokenizerJob>("DOWNLOADER", index) {
+        Worker<TokenizerJob>("TOKENIZER", index) {
+    }
+
+    static unsigned TotalFiles() {
+        return totalFiles_;
+    }
+
+    static unsigned long TotalBytes() {
+        return totalBytes_;
     }
 
     static void AddTokenizer(TokenizerKind kind) {
@@ -176,15 +184,15 @@ private:
         tf->uniqueTokens = tm->tokens.size();
         // now schedule the merger for the tokens map, which has pointer to the file as well
         Merger::Schedule(MergerJob(tm));
+        if (tf->errors > 0)
+            ++errors_;
     }
 
     void tokenize(std::string const & relPath, int cdate) {
         std::string path = STR(job_->path << "/" << relPath);
         std::ifstream s(path, std::ios::in | std::ios::binary);
-        if (not s.good()) {
-            ++errors_;
-            Error(STR("Cannot open file " << path << " for reading"));
-        } else {
+        // it is actually not an error if the file is not found, just github report also deleted files
+        if (s.good()) {
             // load the entire file
             s.seekg(0, std::ios::end);
             std::string data;
@@ -205,13 +213,19 @@ private:
                     tokenize<GenericTokenizer>(relPath, cdate, data, length, fileHash);
                 if (tokenizers_.find(TokenizerKind::JavaScript) != tokenizers_.end())
                     tokenize<JavaScriptTokenizer>(relPath, cdate, data, length, fileHash);
+                // update counters
+                ++totalFiles_;
+                totalBytes_ += length;
             }
+
         }
     }
 
     static std::atomic_uint archives_;
     static std::atomic_uint utf16be_;
     static std::atomic_uint utf16le_;
+    static std::atomic_uint totalFiles_;
+    static std::atomic_ulong totalBytes_;
 
     static std::set<TokenizerKind> tokenizers_;
 };

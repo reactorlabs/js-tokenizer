@@ -7,3 +7,5 @@ std::string DBWriter::db_;
 
 std::vector<DBWriter::Context> DBWriter::contexts_;
 
+std::mutex DBWriter::m_;
+

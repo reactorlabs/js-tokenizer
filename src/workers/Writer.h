@@ -37,6 +37,7 @@ public:
 
     static void SetOutputDir(std::string const & value) {
         outputDir_ = value;
+        createDirectory(value);
     }
 
     static void AddTokenizer(TokenizerKind k) {
@@ -49,6 +50,10 @@ private:
     };
 
     void process(TokensMap const & tokens, std::ofstream & f) {
+        // do nothing if the file is empty, then sourcerer is not interested
+        if (tokens.tokens.size() == 0)
+            return;
+        // otherwise output what we can
         f << tokens.file->project->id << "," <<
              tokens.file->id << "," <<
              tokens.file->totalTokens << "," <<

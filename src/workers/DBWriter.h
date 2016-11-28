@@ -39,6 +39,7 @@ class DBWriter : public Worker<DBWriterJob> {
 public:
     DBWriter(unsigned index):
         Worker<DBWriterJob>("DB WRITER", index) {
+        std::lock_guard<std::mutex> g(m_);
         c_ = mysql_init(nullptr);
         if (c_ == nullptr)
             throw STR("Unable to create MySQL connection");
@@ -64,6 +65,7 @@ public:
 
 private:
 
+
     struct Context {
         std::string tableProjects;
         std::string tableProjectsExtra;
@@ -88,34 +90,44 @@ private:
         }
     };
 
+    void insertInto(std::string const & table, std::string const & what, bool flush = false) {
+        std::string & buffer = buffers_[table];
+        if (buffer.empty())
+            buffer = STR("INSERT INTO " << table << " VALUES (" << what << ")");
+        else
+            buffer = buffer + ",(" + what +")";
+        if (flush or buffer.size() > 1024 * 1024) { // 10MB
+            query(buffer);
+            buffer = "";
+        }
+    }
+
+
     /** Writes the project info to the database.
      */
     void writeProject(ClonedProject const & p, Context const & c) {
-        query(STR("INSERT INTO " << c.tableProjects << " VALUES (" <<
+        insertInto(c.tableProjects, STR(
+            p.id <<
+            ",NULL," <<
+            escape(p.url)));
+        insertInto(c.tableProjectsExtra, STR(
             p.id << "," <<
-            "NULL," << // we do not keep the files on disk
-            escape(p.url) << ")"));
-        // now write the extra information we keep about the project
-        query(STR("INSERT INTO " << c.tableProjectsExtra << " VALUES (" <<
-            p.id << "," <<
-            p.createdAt << ")"));
+            p.createdAt));
     }
 
 
     void writeFile(TokenizedFile const & f, Context const & c) {
-        // each file goes to the files table
-        query(STR("INSERT INTO " << c.tableFiles << " VALUES (" <<
+        insertInto(c.tableFiles, STR(
             f.id << "," <<
             f.project->id << "," <<
             escape(f.relPath) << "," <<
-            escape(f.fileHash) << ")"));
-        // extra file information
-        query(STR("INSERT INTO " << c.tableFilesExtra << " VALUES (" <<
+            escape(f.fileHash)));
+        insertInto(c.tableFilesExtra, STR(
             f.id << "," <<
-            f.createdAt << ")"));
-        // now if the file has unique file hash, export also its statistics
-        if (f.fileHashUnique) {
-            query(STR("INSERT INTO " << c.tableFileStats << " VALUES (" <<
+            f.createdAt));
+        // if the file hash is unique, output it to the stats table
+        if (f.fileHashUnique)
+            insertInto(c.tableFileStats, STR(
                 escape(f.fileHash) << "," <<
                 f.bytes << "," <<
                 f.lines << "," <<
@@ -123,15 +135,13 @@ private:
                 f.sloc << "," <<
                 f.totalTokens << "," <<
                 f.uniqueTokens << "," <<
-                escape(f.tokensHash) << ")"));
-        }
+                escape(f.tokensHash)));
         // if the clone group is not -1 output the clone pair
-        if (f.groupId != -1) {
-            // Note this does not report clone group info for the first file in the group, this is written later when the clone groups are being finalized
-            query(STR("INSERT INTO " << c.tableClonePairs << " VALUES (" <<
+        // Note this does not report clone group info for the first file in the group, this is written later when the clone groups are being finalized
+        if (f.groupId != -1)
+            insertInto(c.tableClonePairs, STR(
                 f.id << "," <<
-                f.groupId << ")"));
-        }
+                f.groupId));
     }
 
     /** Writes the new tokens to the database.
@@ -139,18 +149,10 @@ private:
       For each newly found token writes its id and the actual text.
      */
     void writeNewTokens(std::map<int, std::string> const & tokens, Context const & c) {
-        auto i = tokens.begin(), e = tokens.end();
-        while (i != e) {
-            std::stringstream ss;
-            ss << "INSERT INTO " << c.tableTokenText << " VALUES ";
-            ss << " (" << i->first << "," << escape(i->second) << ")";
-            unsigned approxSize = i->second.size();
-            while (++i != e and approxSize < 10000) {
-                ss << ",(" << i->first << "," << escape(i->second) << ")";
-                approxSize += i->second.size();
-            }
-            query(ss.str());
-            ss.clear();
+        for (auto const & i : tokens) {
+            insertInto(c.tableTokenText, STR(
+                i.first << "," <<
+                escape(i.second)));
         }
     }
 
@@ -232,7 +234,7 @@ private:
             resetDatabase(c);
     }
 
-    void checkTables(Context const & c) {
+    void checkTablesIndexes(Context const & c) {
         if (c.tableProjects.empty())
             return; // unused context
         // table for basic project information, compatible with sourcerer CC
@@ -241,30 +243,29 @@ private:
             "projectPath VARCHAR(4000) NULL,"
             "projectUrl VARCHAR(4000) NOT NULL,"
             "PRIMARY KEY (projectId),"
-            "UNIQUE INDEX (projectId)) ENGINE = MYISAM"));
+            "UNIQUE INDEX (projectId))"));
         // extra information about projects
         query(STR("CREATE TABLE IF NOT EXISTS " << c.tableProjectsExtra << " ("
             "projectId INT NOT NULL,"
             "createdAt INT UNSIGNED NOT NULL,"
             "PRIMARY KEY (projectId),"
-            "UNIQUE INDEX (projectId)) ENGINE = MYISAM"));
+            "UNIQUE INDEX (projectId))"));
         // table for all files found, compatible with sourcerer CC
         query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFiles << " ("
             "fileId BIGINT(6) UNSIGNED NOT NULL,"
             "projectId INT(6) UNSIGNED NOT NULL,"
-            "relativePath VARCHAR(4000) NULL,"
             "relativeUrl VARCHAR(4000) NOT NULL,"
             "fileHash CHAR(32) NOT NULL,"
             "PRIMARY KEY (fileId),"
             "UNIQUE INDEX (fileId),"
             "INDEX (projectId),"
-            "INDEX (fileHash)) ENGINE = MYISAM"));
+            "INDEX (fileHash))"));
         // extra information about files
         query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFilesExtra << " ("
             "fileId INT NOT NULL,"
             "createdAt INT UNSIGNED NOT NULL,"
             "PRIMARY KEY (fileId),"
-            "UNIQUE INDEX (fileId)) ENGINE = MYISAM"));
+            "UNIQUE INDEX (fileId))"));
         // statistics for unique files (based on *file* hash)
         query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFileStats << " ("
             "fileHash CHAR(32) NOT NULL,"
@@ -277,7 +278,7 @@ private:
             "tokenHash CHAR(32) NOT NULL,"
             "PRIMARY KEY (fileHash),"
             "UNIQUE INDEX (fileHash),"
-            "INDEX (tokenHash)) ENGINE = MYISAM"));
+            "INDEX (tokenHash))"));
         // tokenizer clone pairs (no counterpart in sourcerer CC)
         query(STR("CREATE TABLE IF NOT EXISTS " << c.tableClonePairs << " ("
             "fileId INT NOT NULL,"
@@ -302,9 +303,71 @@ private:
             "PRIMARY KEY(id))"));
     }
 
+    /*
+    void checkTables(Context const & c) {
+        if (c.tableProjects.empty())
+            return; // unused context
+        // table for basic project information, compatible with sourcerer CC
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableProjects << " ("
+            "projectId INT(6) NOT NULL,"
+            "projectPath VARCHAR(4000) NULL,"
+            "projectUrl VARCHAR(4000) NOT NULL,"
+            "PRIMARY KEY (projectId))"));
+        // extra information about projects
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableProjectsExtra << " ("
+            "projectId INT NOT NULL,"
+            "createdAt INT UNSIGNED NOT NULL,"
+            "PRIMARY KEY (projectId))"));
+        // table for all files found, compatible with sourcerer CC
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFiles << " ("
+            "fileId BIGINT(6) UNSIGNED NOT NULL,"
+            "projectId INT(6) UNSIGNED NOT NULL,"
+            "relativeUrl VARCHAR(4000) NOT NULL,"
+            "fileHash CHAR(32) NOT NULL,"
+            "PRIMARY KEY (fileId))"));
+        // extra information about files
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFilesExtra << " ("
+            "fileId INT NOT NULL,"
+            "createdAt INT UNSIGNED NOT NULL,"
+            "PRIMARY KEY (fileId))"));
+        // statistics for unique files (based on *file* hash)
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFileStats << " ("
+            "fileHash CHAR(32) NOT NULL,"
+            "fileBytes INT(6) UNSIGNED NOT NULL,"
+            "fileLines INT(6) UNSIGNED NOT NULL,"
+            "fileLOC INT(6) UNSIGNED NOT NULL,"
+            "fileSLOC INT(6) UNSIGNED NOT NULL,"
+            "totalTokens INT(6) UNSIGNED NOT NULL,"
+            "uniqueTokens INT(6) UNSIGNED NOT NULL,"
+            "tokenHash CHAR(32) NOT NULL,"
+            "PRIMARY KEY (fileHash))"));
+        // tokenizer clone pairs (no counterpart in sourcerer CC)
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableClonePairs << " ("
+            "fileId INT NOT NULL,"
+            "groupId INT NOT NULL,"
+            "PRIMARY KEY(fileId))"));
+        // tokenizer clone groups (no counterpart in sourcerer CC)
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableCloneGroups << " ("
+            "groupId INT NOT NULL,"
+            "oldestId INT NOT NULL,"
+            "PRIMARY KEY(groupId))"));
+        // tokens and their freqencies (this is dumped once at the end of the run)
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableTokens << " ("
+            "id INT NOT NULL,"
+            "size INT NOT NULL,"
+            "uses INT NOT NULL,"
+            "PRIMARY KEY(id))"));
+
+        // unique tokens, new tokens are added each time they are found
+        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableTokenText << " ("
+            "id INT NOT NULL,"
+            "text LONGTEXT NOT NULL,"
+            "PRIMARY KEY(id))"));
+    } */
+
     void checkTables() {
         for (Context & c : contexts_)
-            checkTables(c);
+            checkTablesIndexes(c);
     }
 
 
@@ -312,12 +375,16 @@ private:
     MYSQL * c_;
 
 
+    std::map<std::string, std::string> buffers_;
+
     static std::string host_;
     static std::string user_;
     static std::string pass_;
     static std::string db_;
 
     static std::vector<Context> contexts_;
+
+    static std::mutex m_;
 
 
 };

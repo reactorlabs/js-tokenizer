@@ -75,105 +75,59 @@ namespace {
     }
 }
 
-std::unordered_set<std::string> JSTokenizer::jsKeywords_ = initializeJSKeywords();
+std::unordered_set<std::string> JavaScriptTokenizer::jsKeywords_ = initializeJSKeywords();
 
-bool JSTokenizer::ignoreComments_ = true;
-bool JSTokenizer::ignoreSeparators_ = true;
-bool JSTokenizer::ignoreWhitespace_ = true;
+bool JavaScriptTokenizer::ignoreComments_ = true;
+bool JavaScriptTokenizer::ignoreSeparators_ = true;
+bool JavaScriptTokenizer::ignoreWhitespace_ = true;
 
 
-bool JSTokenizer::isKeyword(std::string const &s) {
+bool JavaScriptTokenizer::isKeyword(std::string const &s) {
     return jsKeywords_.find(s) != jsKeywords_.end();
 }
 
-
-size_t JSTokenizer::size() {
-    return data_.size();
-}
-
-size_t JSTokenizer::pos() {
-    return pos_;
-}
-
-bool JSTokenizer::eof() {
-    return pos() >= size();
-}
-
-char JSTokenizer::top() {
-    if (pos_ == data_.size())
-        return 0;
-    return data_[pos_];
-}
-
-void JSTokenizer::pop(unsigned howMuch) {
-    pos_ += howMuch;
-}
-
-char JSTokenizer::peek(int offset) {
-    if (pos_ + offset == data_.size())
-        return 0;
-    return data_[pos_ + offset];
-}
-
-std::string JSTokenizer::substr(size_t start, size_t end) {
-    try {
-        return data_.substr(start, end - start);
-    } catch (...) {
-        std::cout << "HERE I FAIL: " << f_.path() << std::endl;
-        std::cout << "ouch" << std::endl;
-        //exit(-1);
-        //system(STR("mv " << f_.absPath() << " " << "/home/peta/sourcerer/data/errors").c_str());
-        throw "continuing";
-
-    }
-    return "";
-}
-
-void JSTokenizer::addToken(std::string const & s) {
+void JavaScriptTokenizer::addToken(std::string const & s) {
 /*    if (s.size() > 1000) {
         std::cout << "Token: " << s << std::endl;
         std::cout << f_.absPath() << std::endl;
         //exit(1);
     } */
-    f_.addToken(s);
+    ++tokens()[s];
     commentLine_ = false;
 }
 
-void JSTokenizer::addToken(size_t start) {
-    addToken(substr(start, pos()));
+void JavaScriptTokenizer::addToken(size_t start) {
+    addToken(substr(start, pos() - start));
 }
 
-void JSTokenizer::addSeparator(size_t start) {
-    //std::cout << "Separator: " << substr(start, pos()) << std::endl;
-    f_.addSeparator(pos_ - start);
+void JavaScriptTokenizer::addSeparator(size_t start) {
+    tf().separatorBytes += pos() - start;
     commentLine_ = false;
     if (not ignoreSeparators_)
-        f_.addToken(substr(start, pos()));
+        addToken(start);
 }
 
-void JSTokenizer::addComment(size_t start) {
-    //std::cout << "Comment: " << substr(start, pos()) << std::endl;
-    f_.addComment(pos_ - start);
+void JavaScriptTokenizer::addComment(size_t start) {
+    tf().commentBytes += pos() - start;
     emptyLine_ = false;
     if (not ignoreComments_)
-        f_.addToken(substr(start, pos()));
+        addToken(start);
 }
 
-void JSTokenizer::addWhitespace(size_t start) {
-    //std::cout << "Whitespace: " << substr(start, pos()) << std::endl;
-    f_.addWhitespace(pos_ - start);
+void JavaScriptTokenizer::addWhitespace(size_t start) {
+    tf().whitespaceBytes += pos() - start;
     if (not ignoreWhitespace_)
-        f_.addToken(substr(start, pos()));
+        addToken(start);
 }
 
 
-void JSTokenizer::newline() {
-    f_.newline(commentLine_, emptyLine_);
+void JavaScriptTokenizer::newline() {
+    BaseTokenizer::newline(emptyLine_, commentLine_);
     commentLine_ = true;
     emptyLine_ = true;
 }
 
-void JSTokenizer::numericLiteral() {
+void JavaScriptTokenizer::numericLiteral() {
     size_t start = pos();
     // check if it is hex number
     if (top() == '0') {
@@ -205,7 +159,7 @@ void JSTokenizer::numericLiteral() {
 }
 
 
-void JSTokenizer::numericLiteralFloatingPointPart() {
+void JavaScriptTokenizer::numericLiteralFloatingPointPart() {
     if (top() == '.') {
         pop(1);
         while (not eof() and isDecDigit(top()))
@@ -213,7 +167,7 @@ void JSTokenizer::numericLiteralFloatingPointPart() {
     }
 }
 
-void JSTokenizer::numericLiteralExponentPart() {
+void JavaScriptTokenizer::numericLiteralExponentPart() {
     if (top() == 'e' or top() == 'E') {
         pop(1);
         if (top() == '-' or top() == '+')
@@ -223,7 +177,7 @@ void JSTokenizer::numericLiteralExponentPart() {
     }
 }
 
-void JSTokenizer::templateLiteral() {
+void JavaScriptTokenizer::templateLiteral() {
     unsigned start = pos();
     pop(1);
     while (not eof() and top() != '`') {
@@ -236,14 +190,14 @@ void JSTokenizer::templateLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Worker::Log("Unterminated template literal");
-        ++f_.errors;
+        Thread::Log("Unterminated template literal");
+        ++tf().errors;
     }
     addToken(start);
 }
 
 
-void JSTokenizer::stringLiteral() {
+void JavaScriptTokenizer::stringLiteral() {
     unsigned start = pos();
     char delimiter = top();
     pop(1);
@@ -259,8 +213,8 @@ void JSTokenizer::stringLiteral() {
                 break;
         }
         if (top() == '\n') {
-            Worker::Log("Multiple lines in string literal");
-            ++f_.errors;
+            Thread::Log("Multiple lines in string literal");
+            ++tf().errors;
             addToken(start);
             return;
         }
@@ -269,33 +223,42 @@ void JSTokenizer::stringLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Worker::Log("Unterminated string literal");
-        ++f_.errors;
+        Thread::Log("Unterminated string literal");
+        ++tf().errors;
     }
     addToken(start);
 }
 
-void JSTokenizer::regularExpressionLiteral() {
+void JavaScriptTokenizer::regularExpressionLiteral() {
     unsigned start = pos();
     pop(1);
     while (not eof() and top() != '/') {
         // character sets may contain unescaped characters, so we have to handle them separately
         if (top() == '[') {
             pop(1);
-            while (top() != ']')
+            while (top() != ']') {
+                if (eof()) {
+                    Thread::Log("Missing character set end in regular expression, unterminated regular expression");
+                    ++tf().errors;
+                    addToken(start);
+                    return;
+                }
                 pop(1);
+
+            }
         }
-        if (top() == '\\') // any escape will do
+        if (top() == '\\') { // any escape will do
             if (eof()) {
-                Worker::Log("Missing escape in regular expression, unterminated regular expression");
-                ++f_.errors;
+                Thread::Log("Missing escape in regular expression, unterminated regular expression");
+                ++tf().errors;
                 addToken(start);
                 return;
             }
             pop(1);
+        }
         if (top() == '\n') {
-            Worker::Log("Multiple lines in regular expression literal");
-            ++f_.errors;
+            Thread::Log("Multiple lines in regular expression literal");
+            ++tf().errors;
             addToken(start);
             return;
         }
@@ -305,8 +268,8 @@ void JSTokenizer::regularExpressionLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Worker::Log("Unterminated regular expression literal");
-        ++f_.errors;
+        Thread::Log("Unterminated regular expression literal");
+        ++tf().errors;
     }
     // now parse the flags, as if identifier
     while (isIdentifier(top()))
@@ -315,17 +278,22 @@ void JSTokenizer::regularExpressionLiteral() {
 }
 
 
-bool JSTokenizer::identifierOrKeyword() {
+bool JavaScriptTokenizer::identifierOrKeyword() {
     unsigned start = pos();
     while (isIdentifier(top()))
         pop(1);
-    std::string s = substr(start, pos());
-    if (not s.empty())
+    if (pos() == start) {
+        Thread::Log("Unknown character");
+        ++tf().errors;
+        return false;
+    } else {
+        std::string s = substr(start, pos() - start);
         addToken(s);
-    return isKeyword(s);
+        return isKeyword(s);
+    }
 }
 
-void JSTokenizer::singleLineComment() {
+void JavaScriptTokenizer::singleLineComment() {
     unsigned start = pos();
     emptyLine_ = false; // the line definitely contains at least the comment
     pop(2); // //
@@ -337,7 +305,7 @@ void JSTokenizer::singleLineComment() {
     addComment(start);
 }
 
-void JSTokenizer::multiLineComment() {
+void JavaScriptTokenizer::multiLineComment() {
     unsigned start = pos();
     emptyLine_ = false; // the line definitely contains at least the comment
     pop(2); // /*
@@ -354,24 +322,23 @@ void JSTokenizer::multiLineComment() {
         }
     }
     if (eof()) {
-        Worker::Log("Unterminated multi-line comment");
-        ++f_.errors;
+        Thread::Log("Unterminated multi-line comment");
+        ++tf().errors;
     }
     addComment(start);
 }
 
-void JSTokenizer::tokenize() {
+void JavaScriptTokenizer::tokenize() {
     emptyLine_ = true;
     commentLine_ = true;
-    size_t e = size();
     bool expectRegExp = true;
-    size_t start = e;
-    while (pos() != e) {
+    size_t start = 1;
+    while (not eof()) {
         if (start == pos()) {
-            Worker::Log(STR("Unknown character " << top()));
-            ++f_.errors;
+            Thread::Log(STR("Unknown character " << top()));
+            ++tf().errors;
             pop(1);
-            addToken(substr(start, pos()));
+            addToken(substr(start, pos() - start));
         }
         start = pos();
         switch (top()) {
@@ -574,109 +541,4 @@ void JSTokenizer::tokenize() {
         }
         expectRegExp = true;
     }
-}
-
-
-
-
-
-
-
-
-
-
-
-void JSTokenizer::encodeUTF8(unsigned codepoint, std::string & into) {
-    if (codepoint < 0x80) {
-        into += static_cast<char>(codepoint);
-    } else if (codepoint < 0x800) {
-        into += static_cast<char>(0xc0 + (codepoint >> 6));
-        into += static_cast<char>(0x80 + (codepoint & 0x3f));
-    } else if (codepoint < 0x10000) {
-        into += static_cast<char>(0xe0 + (codepoint >> 12));
-        into += static_cast<char>(0x80 + ((codepoint >> 6) & 0x3f));
-        into += static_cast<char>(0x80 + (codepoint & 0x3f));
-    } else if (codepoint < 0x200000) {
-        into += static_cast<char>(0xf0 + (codepoint >> 18));
-        into += static_cast<char>(0x80 + ((codepoint >> 12) & 0x3f));
-        into += static_cast<char>(0x80 + ((codepoint >> 6) & 0x3f));
-        into += static_cast<char>(0x80 + (codepoint & 0x3f));
-    } else if (codepoint < 0x4000000) {
-        into += static_cast<char>(0xf8 + (codepoint >> 24));
-        into += static_cast<char>(0x80 + ((codepoint >> 18) & 0x3f));
-        into += static_cast<char>(0x80 + ((codepoint >> 12) & 0x3f));
-        into += static_cast<char>(0x80 + ((codepoint >> 6) & 0x3f));
-        into += static_cast<char>(0x80 + (codepoint & 0x3f));
-    } else {
-        if (codepoint >= 0x80000000) {
-            Worker::Log(STR("Unknown unicode character " << codepoint));
-            ++f_.errors;
-        }
-        into += static_cast<char>(0xfc + (codepoint >> 30));
-        into += static_cast<char>(0x80 + ((codepoint >> 24) & 0x3f));
-        into += static_cast<char>(0x80 + ((codepoint >> 18) & 0x3f));
-        into += static_cast<char>(0x80 + ((codepoint >> 12) & 0x3f));
-        into += static_cast<char>(0x80 + ((codepoint >> 6) & 0x3f));
-        into += static_cast<char>(0x80 + (codepoint & 0x3f));
-    }
-
-
-}
-
-
-void JSTokenizer::convertUTF16be() {
-    Worker::Log("Converting from UTF16be");
-    std::string result;
-    result.reserve(data_.size());
-    size_t i = 2, e = data_.size();
-    while (i < e) {
-        unsigned cp = ((unsigned)data_[i] << 8) + (unsigned)data_[i+1];
-        i += 2;
-        // this might be 2x codepoint
-        if (cp >= 0xd800) {
-            unsigned cp2 = ((unsigned)data_[i] << 8) + (unsigned)data_[i+1];
-            if (cp2 >= 0xdc00) {
-                i += 2;
-                cp = 0x10000 + ((cp = 0xd800) << 10) + (cp2 - 0xdc00);
-            }
-        }
-        encodeUTF8(cp, result);
-    }
-    data_ = std::move(result);
-}
-
-
-
-void JSTokenizer::convertUTF16le() {
-    Worker::Log("Converting from UTF16le");
-    std::string result;
-    result.reserve(data_.size());
-    size_t i = 2, e = data_.size();
-    while (i < e) {
-        unsigned cp = ((unsigned)data_[i + 1] << 8) + (unsigned)data_[i];
-        i += 2;
-        // this might be 2x codepoint
-        if (cp >= 0xd800) {
-            unsigned cp2 = ((unsigned)data_[i + 1] << 8) + (unsigned)data_[i];
-            if (cp2 >= 0xdc00) {
-                i += 2;
-                cp = 0x10000 + ((cp = 0xd800) << 10) + (cp2 - 0xdc00);
-            }
-        }
-        encodeUTF8(cp, result);
-    }
-    data_ = std::move(result);
-}
-
-void JSTokenizer::checkData() {
-    if (data_.size() >= 2) {
-        if ((data_[0] == (char) 0xff and data_[1] == (char)0xfe)) {
-            convertUTF16le();
-        } else if (data_[0] == (char) 0xfe and data_[1] == (char)0xff) {
-            convertUTF16be();
-        }
-    }
-    // UTF-8, skip if present
-    if (data_.size() >= 3 and data_[0] == (char)0xef and data_[1] == (char) 0xbb and data_[2] == (char) 0xbf)
-            pos_ = 3;
 }

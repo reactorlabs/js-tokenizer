@@ -1,328 +1,140 @@
-#include <cstdlib>
-#include <iostream>
+#ifndef __x86_64__
+#error "Must use 64 bit system!"
+#endif
+
 #include <iomanip>
 #include <thread>
 
 #include "data.h"
-#include "validator.h"
-#include "CSVParser.h"
-#include "downloader.h"
-#include "crawler.h"
-#include "tokenizer.h"
-#include "merger.h"
-#include "DBWriter.h"
+#include "worker.h"
 
-#include "escape_codes.h"
+#include "workers/CSVReader.h"
 
-std::chrono::high_resolution_clock::time_point start;
-std::chrono::high_resolution_clock::time_point end;
+// TODO tokenizer might add number of total files to the prject info and so on
 
+// TODO Perhaps even remove the queue restrictions because we do not really care that much about them, they contain only pointers really
 
-Tokenizer::Tokenizers tx = Tokenizer::Tokenizers::Generic;
-unsigned dt = 1;
-unsigned ct = 1;
-unsigned tt = 1;
-unsigned mt = 1;
-unsigned wt = 1;
+// TODO this should support multiple languages too (through the use of isLanguageFile, which wemight do better
 
-unsigned dq = 10000;
-unsigned cq = 10000;
-unsigned tq = 10000;
-unsigned mq = 10000;
-unsigned wq = 10000;
-
-std::string dbHost = "localhost";
-std::string dbUser = "sourcerer";
-std::string dbPass = "js";
-std::string dbName = "bigdata";
-
-
-
-
-
-void help() {
-    std::cout << "Tokenizer & Downloader" << std::endl;
-    std::cout << "----------------------" << std::endl << std::endl;
-    std::cout << "Usage:" << std::endl << std::endl;
-    std::cout << "tokenizer ACTION {COMMON_ARGS} {ACTION_ARGS}" << std::endl << std::endl;
-    std::cout << "Where COMMON_ARGS stands for the following" << std::endl << std::endl;
-
-    std::cout << "-tx=js             ---   enables only the JavaScript specific tokenizer" << std::endl;
-    std::cout << "-tx=js+generic     ---   enables the generic and the JavaScript specific tokenizer" << std::endl;
-
-    std::cout << "-dt=N              ---   specifies number of downloader threads" << std::endl;
-    std::cout << "-ct=N              ---   specifies number of crawler threads" << std::endl;
-    std::cout << "-tt=N              ---   specifies number of tokenizer threads" << std::endl;
-
-
-
-    std::cout << "-mt=N              ---   specifies number of merger threads" << std::endl;
-    std::cout << "-wt=N              ---   specifies number of writer threads" << std::endl;
-
-    std::cout << "-dq=N              ---   specifies max size of downloader job queue (and opened projects)" << std::endl;
-    std::cout << "-cq=N              ---   specifies max size of crawler job queue" << std::endl;
-    std::cout << "-tq=N              ---   specifies max size of tokenizer queue" << std::endl;
-    std::cout << "-mq=N              ---   specifies max size of merger queue (and opened files)" << std::endl;
-    std::cout << "-wq=N              ---   specifies max size of writer queue (and opened files)" << std::endl;
-
-
-
-    std::cout << "And ACTION & corresponding ACTION_ARGS stand for:" << std::endl << std::endl;
-    std::cout << "-t | --tokenize    ---   tokenizes all github projects in given folders" << std::endl;
-    std::cout << "-d | --download    ---   downloads github projects stored in the specified repos and tokenies them" << std::endl;
-
-    std::cout << "-v | --validate    ---   validates results previous obtained" << std::endl;
-
-
+void addTokenizer(TokenizerKind k) {
+    Tokenizer::AddTokenizer(k);
+    Merger::AddTokenizer(k);
+    DBWriter::AddTokenizer(k);
+    Writer::AddTokenizer(k);
 }
 
-void parseArguments(int argc, char * argv[]) {
-    // ignore the first argument, which
+template<typename T>
+void reportLivingObjects(std::string const & name) {
+    std::cout << "  " << std::setw(50) << std::left << name ;
+    std::cout << std::setw(10) << std::right << T::Instances();
+    std::cout << std::setw(4) << pct(T::Instances(), T::MaxInstances());
+    std::cout << std::endl;
+}
 
+std::string time(double secs) {
+    unsigned seconds = (unsigned) secs;
 
-
+    unsigned h = seconds / 3600;
+    seconds = seconds % 3600;
+    unsigned m = seconds / 60;
+    unsigned s = seconds % 60;
+    return STR(std::setfill('0') << std::setw(2) << h << ":" << std::setfill('0') << std::setw(2) << m << ":" << std::setfill('0') << std::setw(2) << s);
 }
 
 
-/** Displays the statistics from the workers.  */
-void displayStats(double duration) {
-    static unsigned expectedProjs = 2300000;
+/** Waits for a second, then displays statistics. Returns true if all jobs have been finished and all threads are idle, false otherwise. */
+bool stats(std::chrono::high_resolution_clock::time_point const & since) {
+    // sleep for a second - this is not super precise but at the time it takes to run we do not care about such precission anyways...
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    auto now = std::chrono::high_resolution_clock::now();
+    double secondsSince = std::chrono::duration_cast<std::chrono::milliseconds>(now - since).count() / 1000.0;
 
-    std::vector<QueueWorkerStats> stats;
-    stats.push_back(CSVParser::Statistic());
-    stats.push_back(Crawler::Statistic());
-    stats.push_back(Downloader::Statistic());
-    stats.push_back(Tokenizer::Statistic());
-    stats.push_back(Merger<TokenizerType::Generic>::Statistic());
-    stats.push_back(Merger<TokenizerType::JavaScript>::Statistic());
-    stats.push_back(Writer<TokenizerType::Generic>::Statistic());
-    stats.push_back(Writer<TokenizerType::JavaScript>::Statistic());
-    Worker::LockOutput();
-    std::cout << eraseDown;
-    std::cout << "Elapsed    " << time(duration) << " [h:mm:ss]" << std::endl << std::endl;
-    // analysis for different workers
-    std::cout << "Worker                  Status  T/Active   %  Queue       Done Errors   %     Files    Bytes " << std::endl;
-    std::cout << "----------------------- ------- -------- --- ------ ---------- ------ --- --------- ---------" << std::endl;
+    // get all statistics
+    std::vector<Thread::Stats> s;
+    s.push_back(CSVReader::Statistics());
+    s.push_back(Downloader::Statistics());
+    s.push_back(Tokenizer::Statistics());
+    s.push_back(Merger::Statistics());
+    s.push_back(DBWriter::Statistics());
+    s.push_back(Writer::Statistics());
 
-    for (QueueWorkerStats & s: stats) {
-        if (s.started > 0)
-            std::cout << s << std::endl;
-    }
+    // get other info
+    unsigned long projects = s[2].jobsDone;
+    unsigned long files = Tokenizer::TotalFiles();
+    unsigned long bytes = Tokenizer::TotalBytes();
 
-    Worker::UnlockOutput();
 
-#ifdef HAHA
-    Worker::Stats c = Crawler::Statistic();
-    Worker::Stats d = Downloader::Statistic();
-    Worker::Stats t = Tokenizer::Statistic();
-    Worker::Stats m = Merger::Statistic();
-    Worker::Stats w = Writer::Statistic();
-    Worker::LockOutput();
-    std::cout << eraseDown;
-    std::cout << "Elapsed    " << time(duration) << " [h:mm:ss]" << std::endl << std::endl;
+    Thread::LockOutput();
+    // general progress information
+    std::cout << "Progress                                                           /s" << std::endl;
+    std::cout << "------------------------------------------------ ---------- ---------" << std::endl;
+    std::cout << "  Elapsed time                                  " << std::setw(11) << time(secondsSince) << std::endl;
+    std::cout << "  Projects                                      " << std::setw(11) << Tokenizer::JobsDone() << std::endl;
+    std::cout << "  Files                                         " << std::setw(11) << files << std::setw(10) << round(files / secondsSince, 2) << std::endl;
+    std::cout << "  Bytes                                         " << std::setw(11) <<xbytes(bytes) << std::setw(10) << xbytes(bytes / secondsSince) << std::endl;
+    std::cout << std::endl;
 
-    std::cout << "Active threads " << Worker::NumActiveThreads() << std::endl;
-    std::cout << "Crawler        " << c << std::endl;
-    std::cout << "Downloader     " << d << std::endl;
-    std::cout << "Tokenizer      " << t << std::endl;
-    std::cout << "Merger         " << m << std::endl;
-    std::cout << "Writer         " << w << std::endl << std::endl;
+    // Worker statistics
+    std::cout << "Worker                      Up   I*   %  S*    %  QSize       Done   Err Fatal   %" << std::endl;
+    std::cout << "-------------------------- --- ---  --- ---  --- ------ ---------- ----- ----- ---" << std::endl;
+    for (Thread::Stats & stats : s)
+        //if (stats.started > 0)
+            std::cout << "  " << stats << std::endl;
+    std::cout << std::endl;
 
-    std::cout << "Files      "
-              << std::setw(8) << Tokenizer::ProcessedFiles() << " tokenizer"
-              << std::setw(8) << Merger::ProcessedFiles() << " merger"
-              << std::setw(8) << Writer::ProcessedFiles() << " writer"
-              << std::endl;
+    // Memory statistics
+    std::cout << "Living objects                                               #   %" <<  std::endl;
+    std::cout << "--------------------------------------------------- ---------- ---" << std::endl;
+    reportLivingObjects<ClonedProject>("Projects");
+    reportLivingObjects<TokenizedFile>("Files");
+    reportLivingObjects<TokensMap>("Token Maps");
+    std::cout << std::endl;
 
-    std::cout << "Bytes      " << std::setprecision(2) << std::fixed
-              << std::setw(8) << Tokenizer::ProcessedMBytes() << " tokenizer"
-              << std::setw(8) << Merger::ProcessedMBytes() << " merger"
-              << std::setw(8) << Writer::ProcessedMBytes() << " writer [MB]"
-              << std::endl;
 
-    std::cout << "Throughput "
-              << std::setw(8) << (Tokenizer::ProcessedMBytes() / duration) << " tokenizer"
-              << std::setw(8) << (Merger::ProcessedMBytes() / duration) << " merger"
-              << std::setw(8) << (Writer::ProcessedMBytes() / duration) << " writer [MB/s]"
-              << std::endl << std::endl;
+    Thread::UnlockOutput();
 
-    std::cout << "Unique tokens     " << Merger::NumUniqueTokens() << std::endl;
-    std::cout << "Empty files       " << Merger::NumEmptyFiles() << pct(Merger::NumEmptyFiles(), Merger::ProcessedFiles()) << std::endl;
-    std::cout << "Detected clones   " << Merger::NumClones() << pct(Merger::NumClones(), Merger::ProcessedFiles()) << std::endl;
-    std::cout << "JS errors         " << Tokenizer::jsErrors() << pct(Tokenizer::jsErrors(), Tokenizer::ProcessedFiles()) << std::endl;
-    std::cout << cursorUp(16);
-    Worker::UnlockOutput();
-#endif
+
+
+
+
+
+    for (Thread::Stats & stats : s)
+        if (stats.queueSize > 0 or stats.idle != stats.started)
+            return false;
+    return true;
 }
 
-
-
-void tokenize(int argc, char * argv[]) {
-#ifdef HAHA
-    if (argc < 2) {
-        help();
-        throw STR("Invalid number of arguments");
-    }
-
-    Crawler::SetQueueLimit(10000);
-    Tokenizer::SetQueueLimit(10000);
-    Merger::SetQueueLimit(10000);
-    Writer::SetQueueLimit(10000);
-
-
-    std::string outdir = argv[2];
-
-    for (unsigned i = 3; i < argc; ++i)
-        Crawler::Schedule(CrawlerJob(argv[i]), nullptr);
-
-    start = std::chrono::high_resolution_clock::now();
-
-
-    Writer::initializeOutputDirectory(outdir);
-
-
-    Worker::InitializeThreads<Crawler>(8);
-    Worker::InitializeThreads<Tokenizer>(8);
-    Worker::InitializeThreads<Merger>(8);
-    Worker::InitializeThreads<Writer>(1);
-
-    do {
-        displayStats(secondsSince(start));
-    } while (not Worker::WaitForFinished(1000));
-
-    displayStats(secondsSince(start));
-    std::cout << cursorDown(15);
-    Worker::Log("ALL DONE");
-    std::ofstream tokens(STR(outdir << "/tokens.txt"));
-    Merger::writeGlobalTokens(tokens);
-#endif
-}
-
-void downloaderStatistics() {
-    Worker::LockOutput();
-    std::cout << "Total projects " << CSVParser::TotalProjects() << ", language " << CSVParser::LanguageProjects() << ", deleted " << CSVParser::DeletedProjects() << ", forked " << CSVParser::ForkedProjects() << ", valid " << CSVParser::ValidProjects() << std::endl;
-    Worker::UnlockOutput();
-}
-
-/** Download the stuff from the repo and tokenize it on the fly.
- */
-void download(int argc, char * argv[]) {
-    CSVParser::Schedule("/home/peta/sourcerer/projects.small.csv", nullptr);
-    CSVParser::SetLanguage("JavaScript");
-
-    Downloader::SetKeepWhenDone(false);
-    Downloader::SetDownloadDir("/home/peta/sourcerer/downloaded");
-    Downloader::Initialize();
-
-
-    DBConnection::setConnection(dbHost, dbUser, dbPass, dbName);
-    DBConnection::createDatabase(true);
-    Writer<TokenizerType::Generic>::InitializeSourcererOutput("/home/peta/sourcerer/output");
-    Writer<TokenizerType::JavaScript>::InitializeSourcererOutput("/home/peta/sourcerer/output");
-
-    Writer<TokenizerType::Generic>::SetQueueLimit(100000);
-    Writer<TokenizerType::JavaScript>::SetQueueLimit(100000);
-
-    start = std::chrono::high_resolution_clock::now();
-    Worker::InitializeThreads<CSVParser>(1);
-    Worker::InitializeThreads<Downloader>(10);
-    Worker::InitializeThreads<Tokenizer>(4);
-    Worker::InitializeThreads<Merger<TokenizerType::Generic>>(2);
-    Worker::InitializeThreads<Merger<TokenizerType::JavaScript>>(2);
-    Worker::InitializeThreads<Writer<TokenizerType::Generic>>(10);
-    Worker::InitializeThreads<Writer<TokenizerType::JavaScript>>(10);
-
-
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-    do {
-        displayStats(secondsSince(start));
-    } while (not Worker::WaitForFinished(1000));
-    Worker::Print(STR(std::endl << std::endl));
-
-    Merger<TokenizerType::Generic>::Schedule(MergerJob<TokenizerType::Generic>(nullptr), nullptr);
-    Merger<TokenizerType::JavaScript>::Schedule(MergerJob<TokenizerType::JavaScript>(nullptr), nullptr);
-    do {
-        displayStats(secondsSince(start));
-    } while (not Worker::WaitForFinished(1000));
-    Worker::Print(STR(std::endl << std::endl << "ALL DONE. " << std::endl));
-}
-
-
-
-
-
-/** Validates the tokenizer results.
-
-  I.e. runs diffs on its clones where file hashes differ and checks that file hash same clones are byte for byte identical.
- */
-void validate(int argc, char * argv[]) {
-#ifdef HAHA
-
-    std::cout << "Initializing..." << std::endl;
-    Validator::Initialize("processed");
-    start = std::chrono::high_resolution_clock::now();
-    Validator::InitializeThreads(8);
-    std::cout << "Initialized" << std::endl;
-    do {
-        //Validator::DisplayStats(secondsSince(start));
-    } while (not Worker::WaitForFinished(1000));
-    Validator::DisplayStats(secondsSince(start));
-    std::cout << cursorDown(10);
-#endif
-
-}
-
-
-
-
-void process(int argc, char * argv[]) {
-
-}
-/** Changes that I must implement:
-
-  - instead of taking data from disk, take data from the csv file
-  - download each project, i.e. have github project management
-  - the downloader can load up to N projects at the same time
-  - change the output of large tokens so that we hash them when necessary
-  - use database to check for file hashes
- */
-
-
-
-/*
 
 
 int main(int argc, char * argv[]) {
-    try {
-        download(argc, argv);
-        return EXIT_SUCCESS;
+
+    // let's make this artificially high so that DB has time to rest, let the # of objects do the job
+    DBWriter::SetQueueMaxLength(100000);
+
+    CSVReader::SetLanguage("JavaScript");
+
+    Downloader::SetDownloadDir("/data/sourcerer/github/download");
+    DBWriter::SetConnection("127.0.0.1", "bigdata", "sourcerer", "js");
+    Writer::SetOutputDir("/data/sourcerer/github/output");
+
+    addTokenizer(TokenizerKind::Generic);
+    addTokenizer(TokenizerKind::JavaScript);
+
+    CSVReader::Schedule("/home/peta/sourcerer/projects.small.csv");
 
 
-        if (argc < 2) {
-            help();
-            throw STR("Invalid number of arguments");
-        }
-        std::string cmd = argv[1];
-        if (cmd == "help" or cmd == "--help" or cmd == "-h") {
-            help();
-        } else if (cmd == "tokenize" or cmd == "--tokenize" or cmd == "-t") {
-            tokenize(argc, argv);
-        } else if (cmd == "validate" or cmd == "--validate" or cmd == "-v") {
-            validate(argc, argv);
-        } else if (cmd == "process" or cmd == "--process" or cmd == "-p") {
-            process(argc, argv);
-        } else {
-            help();
-            throw STR("Invalid command " << cmd);
-        }
-        return EXIT_SUCCESS;
-    } catch (std::string const & e) {
-        std::cerr << e << std::endl;
-    } catch (char const * e) {
-        std::cerr << e << std::endl;
+
+    Thread::InitializeWorkers<DBWriter>(4);
+    Thread::InitializeWorkers<CSVReader>(1);
+    Thread::InitializeWorkers<Downloader>(50);
+    Thread::InitializeWorkers<Tokenizer>(4);
+    Thread::InitializeWorkers<Merger>(2);
+    Thread::InitializeWorkers<Writer>(1);
+
+    auto start = std::chrono::high_resolution_clock::now();
+    while (not stats(start)) {
+
     }
-    return EXIT_FAILURE;
 
+    return EXIT_SUCCESS;
 }
-*/

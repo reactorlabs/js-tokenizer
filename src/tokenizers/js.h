@@ -2,24 +2,23 @@
 
 #include <unordered_set>
 
-#include "../tokenizer.h"
+#include "generic.h"
 
 
 
 /** Custom built tokenizer for Javascript.
  */
-class JSTokenizer {
+class JavaScriptTokenizer : public BaseTokenizer {
 public:
 
-    static void Tokenize(TokenizedFile * f, std::string && contents) {
-        JSTokenizer t(f);
-        f->tokenizer = TokenizerType::JavaScript;
-        t.data_ = std::move(contents);
-        t.checkData();
-        t.pos_ = 0;
-        t.tokenize();
-        //f.updateFileStats(t.data_);
+    static TokenizerKind const kind = TokenizerKind::JavaScript;
+
+    JavaScriptTokenizer(std::string const & file, std::shared_ptr<TokenizedFile> tf):
+        BaseTokenizer(file, tf) {
+        tf->tokenizer = TokenizerKind::JavaScript;
     }
+
+    void tokenize() override;
 
     static bool & IgnoreSeparators() {
         return ignoreSeparators_;
@@ -36,9 +35,6 @@ public:
 
 private:
 
-    JSTokenizer(TokenizedFile * f):
-        f_(*f) {
-    }
 
     static bool isDecDigit(char c) {
         return c >= '0' and c <= '9';
@@ -100,23 +96,7 @@ private:
 
     bool isKeyword(std::string const & s);
 
-    size_t size();
-
-    size_t pos();
-
-    bool eof();
-
-    char top();
-
-    void pop(unsigned howMuch);
-
-    char peek(int offset);
-
-    std::string substr(size_t start, size_t end);
-
     void updateFileHash();
-
-
 
     void addToken(std::string const & s);
     void addToken(size_t start);
@@ -155,21 +135,10 @@ private:
 
 
 
-    void tokenize();
-
-
-
-    void encodeUTF8(unsigned codepoint, std::string & into);
-
-    void convertUTF16le();
-    void convertUTF16be();
 
     void checkData();
 
-    std::string data_;
-    unsigned pos_;
 
-    TokenizedFile & f_;
 
     bool emptyLine_;
     bool commentLine_;

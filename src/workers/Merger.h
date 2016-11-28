@@ -84,12 +84,12 @@ private:
                 (*newTokens)[id] = i.first;
             // create a record for the translated token and its uses
             translatedTokens[STR(std::hex << id)] = i.second;
-            // swap translated tokens for the original tokens in the token map
-            job_->tokens = std::move(translatedTokens);
-            // if we have created any new tokens, pass them to the DBWriter.
-            if (not newTokens->tokens.empty())
-                DBWriter::Schedule(DBWriterJob(newTokens));
         }
+        // swap translated tokens for the original tokens in the token map
+        job_->tokens = std::move(translatedTokens);
+        // if we have created any new tokens, pass them to the DBWriter.
+        if (not newTokens->tokens.empty())
+            DBWriter::Schedule(DBWriterJob(newTokens));
     }
 
     void process(Context & context) {

@@ -14,6 +14,10 @@ public:
         Worker<std::string>("CSV READER", index) {
     }
 
+    static void SetLanguage(std::string const & value) {
+        language_ = value;
+    }
+
     static char const DELIMITER = ',';
     static char const QUOTE = '"';
     static char const ESCAPE = '\\';

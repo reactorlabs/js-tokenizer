@@ -10,7 +10,7 @@
 #include <iostream>
 #include <iomanip>
 
-#include "../hashes/md5.h"
+#include "hashes/md5.h"
 
 /** Shorthand for converting different types to string as long as they support the std::ostream << operator.
 */
@@ -93,14 +93,36 @@ namespace std {
     };
 }
 
+inline double round(double what, unsigned precission) {
+    double x = pow(10, precission);
+    return round(what * x) / x;
+}
+
 inline std::string pct(unsigned x, unsigned total) {
     if (total == 0)
         return "";
     double pct = (x * 100.0) / total;
     if (pct > 10)
-        return STR(round(pct));
+        return STR(round(pct, 0));
     else
-        return STR(round(pct * 10) / 10);
+        return STR(round(pct, 1));
+}
+
+inline std::string xbytes(unsigned long b) {
+    double x = b;
+    if ( x < 1024)
+        return STR(x << " b");
+    x /= 1024;
+    if (x < 1024)
+        return STR(round(x, 2)  << " Kb");
+    x /= 1024;
+    if (x < 1024)
+        return STR(round(x, 2)  << " Mb");
+    x /= 1024;
+    if (x < 1024)
+        return STR(round(x, 2)  << " Gb");
+    x /= 1024;
+    return STR(round(x, 2)  << " Tb");
 }
 
 inline std::string escape(Hash const & what) {
