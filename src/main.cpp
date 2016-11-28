@@ -16,6 +16,10 @@
 
 // TODO this should support multiple languages too (through the use of isLanguageFile, which wemight do better
 
+// TODO js and generic files have different id's this is not something I would want
+
+// TODO DBWriter should flush its buffers when it goes to idle...
+
 void addTokenizer(TokenizerKind k) {
     Tokenizer::AddTokenizer(k);
     Merger::AddTokenizer(k);
