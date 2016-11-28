@@ -20,7 +20,7 @@
 
 std::atomic_uint Tokenizer::fid_(0);
 
-Tokenizer::Tokenizers Tokenizer::tokenizers_ = Tokenizer::Tokenizers::GenericAndJs;
+//Tokenizer::Tokenizers Tokenizer::tokenizers_ = Tokenizer::Tokenizers::GenericAndJs;
 
 
 void Tokenizer::process(TokenizerJob const & job) {

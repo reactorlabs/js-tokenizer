@@ -7,6 +7,7 @@
 #include <thread>
 #include <string>
 #include <cassert>
+#include <iostream>
 
 class Thread {
 public:
@@ -39,13 +40,35 @@ public:
 
     }
 
+    static void Error(std::string const & what) {
+        std::cerr << what;
+        if (current_ != nullptr)
+            std::cerr << " (" << current_->name_ << ")";
+        std::cerr << std::endl;
+
+    }
+
+    static void Stall() {
+        if (current_ != nullptr)
+            current_->stall();
+    }
+
+    static void Resume() {
+        if (current_ != nullptr)
+            current_->resume();
+    }
+
     template<typename W>
     static void InitializeWorkers(unsigned num) {
         static_assert(std::is_base_of<Thread, W>::value, "T must be subclass of Thread");
         for (unsigned i = 0; i < num; ++i) {
             std::thread t([i] () {
-                W c(i);
-                c();
+                try {
+                    W c(i);
+                    c();
+                } catch (std::string const & e) {
+                    Error(e);
+                }
             });
             t.detach();
         }
@@ -58,6 +81,8 @@ protected:
     }
 
 private:
+    template<typename JOB>
+    friend class Worker;
 
     /** Called when the thread is about to be stalled */
     virtual void stall() {}
@@ -85,14 +110,12 @@ public:
         return Stats{className_, startedThreads_, idleThreads_, stalledThreads_, jobs_.size(), jobsDone_, errors_, fatalErrors_, hasIdled, hasStalled};
     }
 
-    void Schedule(JOB const & job) {
+    static void Schedule(JOB const & job) {
         std::unique_lock<std::mutex> g(qm_);
         while (queueFull()) {
-            if (current_ != nullptr)
-                current_->stall();
+            Stall();
             qcvAdd_.wait(g);
-            if (current_ != nullptr)
-                current_->resume();
+            Resume();
         }
         jobs_.push(job);
         qcv_.notify_one();
@@ -109,9 +132,10 @@ public:
                 process();
             } catch (std::string const & e) {
                 ++errors_;
-
+                Error(e);
             } catch (...) {
                 ++fatalErrors_;
+                Error("Fatal error");
             }
             ++jobsDone_;
         }
@@ -129,11 +153,14 @@ protected:
 
     JOB job_;
 
+protected:
+    // Errors (# of exceptions thrown by the process method)
+    static std::atomic_uint errors_;
 private:
 
     virtual void process() = 0;
 
-    virtual bool queueFull() {
+    static bool queueFull() {
         return  (jobs_.size() >= queueMaxLength_);
     }
 
@@ -175,8 +202,6 @@ private:
     static std::atomic_uint stalledThreads_;
     // Number of jobs processed (including errors)
     static std::atomic_uint jobsDone_;
-    // Errors (# of exceptions thrown by the process method)
-    static std::atomic_uint errors_;
     // Fatal errors, i.e. the number of unrecognized exceptions thrown from the process method
     static std::atomic_uint fatalErrors_;
 
@@ -198,7 +223,7 @@ private:
 
 
 template<typename J>
-std::string Worker<J>::className_;
+std::string Worker<J>::className_ = "";
 
 template<typename J>
 bool Worker<J>::hasIdled_;

@@ -1,20 +1,23 @@
 #include <ostream>
 #include <iomanip>
 
+
 #include "worker.h"
 
+#include "helpers.h"
 
 std::ostream & operator << (std::ostream & s, Thread::Stats const & stats) {
-    s << std::setw(24) << std::left << stats.name <<
-         stats.started <<
-         stats.idle <<
-         stats.stalled <<
-         stats.queueSize <<
-         stats.jobsDone <<
-         stats.errors <<
-         stats.fatalErrors <<
-         stats.hasIdled <<
-         stats.hasStalled;
+    s << std::setw(24) << std::left << stats.name << std::right
+      << std::setw(4) << stats.started
+      << std::setw(4) << stats.idle << std::setw(1) << (stats.hasIdled ? "*" : " ")
+      << std::setw(4) << pct(stats.idle, stats.started)
+      << std::setw(4) << stats.stalled << std::setw(1) << (stats.hasStalled ? "!" : " ")
+      << std::setw(4) << pct(stats.stalled, stats.started)
+      << std::setw(7) << stats.queueSize
+      << std::setw(11) << stats.jobsDone
+      << std::setw(6) << stats.errors
+      << std::setw(6) << stats.fatalErrors;
+    return s;
 }
 
 thread_local Thread * Thread::current_;

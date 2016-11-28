@@ -1,8 +1,12 @@
 #pragma once
 
+#include <string>
 #include <fstream>
 
+#include "../data.h"
 #include "../worker.h"
+
+#include "Downloader.h"
 
 class CSVReader : public Worker<std::string> {
 public:
@@ -76,6 +80,19 @@ private:
         }
     }
 
+    std::string const & projectLanguage() {
+        return row_[5];
+    }
+
+    bool isDeleted() {
+        return row_[9] == "0";
+
+    }
+
+    bool isForked() {
+        return row_[7] != "\\N";
+
+    }
 
     virtual void process() {
         f_.open(job_);
@@ -86,14 +103,21 @@ private:
             parseRow();
             if (row_.size() > 0) {
                 ++totalProjects_;
-                if (ClonedProject::language(row_) == language_) {
+                if (projectLanguage() == language_) {
                     ++languageProjects_;
-                    if (not ClonedProject::isDeleted(row_)) {
-                        if (not ClonedProject::isForked(row_)) {
+                    if (not isDeleted()) {
+                        if (not isForked()) {
                             ++validProjects_;
-                            ++processedFiles_;
                             // pass the project to the downloader
-                            Downloader::Schedule(new ClonedProject(row_), this);
+                            try {
+                            Downloader::Schedule(DownloaderJob(new ClonedProject(
+                                std::atoi(row_[0].c_str()),
+                                row_[1].substr(29),
+                                timestampFrom(row_[6]))));
+                            } catch (...) {
+                                Error("Invalid projects row");
+                                ++errors_;
+                            }
                         } else {
                             ++forkedProjects_;
                         }
@@ -111,4 +135,12 @@ private:
     std::string line_;
     unsigned pos_;
     std::vector<std::string> row_;
+
+    static std::string language_;
+
+    static std::atomic_uint totalProjects_;
+    static std::atomic_uint languageProjects_;
+    static std::atomic_uint forkedProjects_;
+    static std::atomic_uint deletedProjects_;
+    static std::atomic_uint validProjects_;
 };
