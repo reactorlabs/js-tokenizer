@@ -18,6 +18,12 @@ public:
     TokenizerJob(std::shared_ptr<ClonedProject> ptr):
         std::shared_ptr<ClonedProject>(ptr) {
     }
+
+    friend std::ostream & operator << (std::ostream & s, TokenizerJob const & j) {
+        s << "Project id " << j->id << ", url: " << j->cloneUrl();
+        return s;
+    }
+
 };
 
 class Tokenizer : public Worker<TokenizerJob> {
@@ -140,8 +146,8 @@ private:
     virtual void process() {
         // open the cdates
         std::ifstream cdates(STR(job_->path << "/cdate.js.tokenizer.txt"));
-        assert(cdates.good() and "Downloader must make sure this exists");
-
+        if (not cdates.good())
+            throw STR("Downloader must make sure that the cdate.js.tokenizer.txt file exists");
         // parse the cdates file and tokenize each language file found
 
         int date = 0;
@@ -169,9 +175,9 @@ private:
     }
 
     template<typename T>
-    void tokenize(std::string const & relPath, int cdate, std::string & file, unsigned length, Hash fileHash) {
+    void tokenize(int id, std::string const & relPath, int cdate, std::string & file, unsigned length, Hash fileHash) {
         // create the tokenized file
-        std::shared_ptr<TokenizedFile> tf(new TokenizedFile(job_, relPath, cdate));
+        std::shared_ptr<TokenizedFile> tf(new TokenizedFile(id, job_, relPath, cdate));
         // create the tokenizer and tokenize the file
         T tokenizer(file, tf);
         tokenizer.tokenize();
@@ -208,11 +214,13 @@ private:
                 Hash fileHash(data);
                 // do UTF conversion of required
                 utf8(data);
+                // get new ID for the file
+                int id = TokenizedFile::GetNewId();
                 // valid file, let's tokenize
                 if (tokenizers_.find(TokenizerKind::Generic) != tokenizers_.end())
-                    tokenize<GenericTokenizer>(relPath, cdate, data, length, fileHash);
+                    tokenize<GenericTokenizer>(id, relPath, cdate, data, length, fileHash);
                 if (tokenizers_.find(TokenizerKind::JavaScript) != tokenizers_.end())
-                    tokenize<JavaScriptTokenizer>(relPath, cdate, data, length, fileHash);
+                    tokenize<JavaScriptTokenizer>(id, relPath, cdate, data, length, fileHash);
                 // update counters
                 ++totalFiles_;
                 totalBytes_ += length;

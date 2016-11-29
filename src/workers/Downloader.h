@@ -19,7 +19,7 @@ public:
     }
 
     friend std::ostream & operator << (std::ostream & s, DownloaderJob const & j) {
-        s << "Downloader job " << j->id << ", url: " << j->cloneUrl();
+        s << "Project id " << j->id << ", url: " << j->cloneUrl();
         return s;
     }
 };
@@ -48,7 +48,7 @@ private:
         job_->path = STR(downloadDir_ << "/" << job_->id);
         // if the directory exists, delete it first
         if (isDirectory(job_->path))
-            system(STR("rm -rf " << job_->path).c_str());
+            job_->deleteFromDisk();
 
         // download the project using git
         std::string out = exec(STR("git clone " << job_->cloneUrl() << " " << job_->id), downloadDir_);
@@ -67,7 +67,6 @@ private:
         Tokenizer::Schedule(TokenizerJob(job_));
 
     }
-
 
 
     static std::string downloadDir_;

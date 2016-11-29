@@ -9,6 +9,8 @@
 #include <cassert>
 #include <iostream>
 
+#include "helpers.h"
+
 class Thread {
 public:
 
@@ -45,11 +47,12 @@ public:
     }
 
     static void Log(std::string const & what) {
-        std::lock_guard<std::mutex> g(out_);
+        // logs are silent for now
+/*        std::lock_guard<std::mutex> g(out_);
         std::cerr << what;
         if (current_ != nullptr)
             std::cerr << " (" << current_->name_ << ")";
-        std::cerr << std::endl;
+        std::cerr << std::endl; */
     }
 
     static void Error(std::string const & what) {
@@ -155,11 +158,11 @@ public:
                 getJob();
                 process();
             } catch (std::string const & e) {
-                ++errors_;
-                Error(e);
+                ++errors_; // TODO add current job to the error message
+                Error(STR(e << " -- job: " << job_));
             } catch (...) {
                 ++fatalErrors_;
-                Error("Fatal error");
+                Error(STR("Fatal error. -- job: " << job_));
             }
             ++jobsDone_;
         }
@@ -177,9 +180,26 @@ protected:
 
     JOB job_;
 
+    static std::queue<JOB> jobs_;
+
 protected:
     // Errors (# of exceptions thrown by the process method)
     static std::atomic_uint errors_;
+
+    virtual void getJob() {
+        std::unique_lock<std::mutex> g(qm_);
+        while (jobs_.empty()) {
+            ++idleThreads_;
+            hasIdled_ = true;
+            qcv_.wait(g);
+            --idleThreads_;
+        }
+        job_ = jobs_.front();
+        jobs_.pop();
+        if (not queueFull())
+            qcvAdd_.notify_one();
+    }
+
 private:
 
     virtual void process() = 0;
@@ -197,20 +217,6 @@ private:
         --stalledThreads_;
     }
 
-    void getJob() {
-        std::unique_lock<std::mutex> g(qm_);
-        while (jobs_.empty()) {
-            ++idleThreads_;
-            hasIdled_ = true;
-            qcv_.wait(g);
-            --idleThreads_;
-        }
-        assert(jobs_.empty() == false);
-        job_ = jobs_.front();
-        jobs_.pop();
-        if (not queueFull())
-            qcvAdd_.notify_one();
-    }
 
 
     // Name of the particular worker's class
@@ -238,8 +244,6 @@ private:
 
     // Conditional variable for dependent threads to wait on
     static std::condition_variable qcvAdd_;
-
-    static std::queue<JOB> jobs_;
 
 
     // Maximum length of the jobs queue. When the queue is larger than this number the thread scheduling next job will be paused

@@ -89,6 +89,10 @@ inline std::string prefix(TokenizerKind k) {
 class ClonedProject : public ObjectsCounter<ClonedProject> {
 public:
 
+    static void SetKeepProjects(bool value) {
+        keepProjects_ = value;
+    }
+
     ClonedProject(int id, std::string const & url, unsigned createdAt):
         id(id),
         url(url),
@@ -101,10 +105,25 @@ public:
         return STR("http://github.com/" << url << ".git");
     }
 
+    /** Deletes the project from disk.
+     */
+    void deleteFromDisk() {
+        if (system(STR("rm -rf " << path).c_str()) != EXIT_SUCCESS)
+            Thread::Log(STR("Unable to delete folder " << path));
+    }
+
+    ~ClonedProject() {
+        if (not keepProjects_)
+            deleteFromDisk();
+    }
+
     int id;
     std::string url;
     unsigned createdAt;
     std::string path;
+
+private:
+    static bool keepProjects_;
 };
 
 /** Contains a tokenized file.
@@ -112,8 +131,14 @@ public:
 class TokenizedFile : public ObjectsCounter<TokenizedFile> {
 public:
 
-    TokenizedFile(std::shared_ptr<ClonedProject> const & project, std::string relPath, unsigned cdate):
-        id(idCounter_++),
+    /** Retrns new id for a file so that the same files tokenized by different tokenizers have the same ids.
+     */
+    static int GetNewId() {
+        return idCounter_++;
+    }
+
+    TokenizedFile(int id, std::shared_ptr<ClonedProject> const & project, std::string relPath, unsigned cdate):
+        id(id),
         project(project),
         relPath(relPath),
         createdAt(cdate) {
@@ -170,7 +195,6 @@ public:
 class CloneGroup {
 public:
     int id;
-    unsigned files;
     int oldestId;
     unsigned oldestTime;
 
@@ -201,18 +225,15 @@ class TokenInfo {
 public:
     int id;
     unsigned uses;
-    unsigned size;
 
     TokenInfo():
         id(idCounter_++),
-        uses(0),
-        size(0) {
+        uses(0) {
     }
 
     bool update(std::string const & token, unsigned uses) {
         if (this->uses == 0) {
             this->uses = uses;
-            this->size = token.size();
             return true;
         } else {
             this->uses += uses;
@@ -242,14 +263,30 @@ public:
 
 class MergerStats {
 public:
-    TokenizerKind tokenizer;
-    std::map<Hash, CloneGroup> const & cloneGroups;
-    std::map<Hash, TokenInfo> const & tokens;
+    enum class Kind {
+        CloneGroup,
+        TokenInfo
+    };
 
-    MergerStats(TokenizerKind kind, std::map<Hash, CloneGroup> const & cloneGroups, std::map<Hash, TokenInfo> const & tokens):
+    TokenizerKind tokenizer;
+
+    Kind kind;
+
+    union {
+        CloneGroup const * cloneGroup;
+        TokenInfo const * tokenInfo;
+    };
+
+    MergerStats(TokenizerKind kind, CloneGroup const * group):
         tokenizer(kind),
-        cloneGroups(cloneGroups),
-        tokens(tokens) {
+        kind(Kind::CloneGroup),
+        cloneGroup(group) {
+    }
+
+    MergerStats(TokenizerKind kind, TokenInfo const * info):
+        tokenizer(kind),
+        kind(Kind::TokenInfo),
+        tokenInfo(tokenInfo) {
     }
 };
 

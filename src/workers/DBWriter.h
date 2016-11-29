@@ -9,6 +9,14 @@
 
 class DBWriterJob {
 public:
+    enum class Kind {
+        Project,
+        File,
+        NewTokens,
+        CloneGroup,
+        TokenInfo
+    };
+
     DBWriterJob() {
 
     }
@@ -25,14 +33,30 @@ public:
         tokens(tokens) {
     }
 
-    DBWriterJob(std::shared_ptr<MergerStats> tokens):
-        mergerStats(tokens) {
+    DBWriterJob(MergerStats * stats):
+        mergerStats(stats) {
     }
 
+
+    /* This can be optimized by union, but we then have to play the union destructor games, which is not fun. Also it should be enough since the queue sizes are bounded and therefore small.
+     */
     std::shared_ptr<ClonedProject> project;
     std::shared_ptr<TokenizedFile> file;
     std::shared_ptr<NewTokens> tokens;
     std::shared_ptr<MergerStats> mergerStats;
+
+    friend std::ostream & operator << (std::ostream & s, DBWriterJob const & j) {
+        if (j.project != nullptr)
+            s << "Project id " << j.project->id;
+        else if (j.file != nullptr)
+            s << "File id " << j.file->id << ", url " << j.file->project->url << "/" << j.file->relPath;
+        else if (j.tokens != nullptr)
+            s << "New tokens";
+        else
+            s << "Statistics";
+        return s;
+    }
+
 };
 
 class DBWriter : public Worker<DBWriterJob> {
@@ -61,6 +85,18 @@ public:
         if (contexts_.size() < idx + 1)
             contexts_.resize(idx + 1);
         contexts_[idx].setPaths(prefix(k));
+    }
+
+protected:
+
+    /** If the queue is idle, flush the buffers first, and then try again.
+
+      This should in theory help with the congestion when most db threads start wtiting at the same time.
+     */
+    void getJob() override {
+        if (jobs_.empty())
+            flush();
+        Worker<DBWriterJob>::getJob();
     }
 
 private:
@@ -92,16 +128,25 @@ private:
 
     void insertInto(std::string const & table, std::string const & what, bool flush = false) {
         std::string & buffer = buffers_[table];
-        if (buffer.empty())
-            buffer = STR("INSERT INTO " << table << " VALUES (" << what << ")");
-        else
-            buffer = buffer + ",(" + what +")";
-        if (flush or buffer.size() > 1024 * 1024) { // 10MB
+        if (not what.empty()) {
+            if (buffer.empty())
+                buffer = STR("INSERT INTO " << table << " VALUES (" << what << ")");
+            else
+                buffer = buffer + ",(" + what +")";
+        }
+        if ((flush and not buffer.empty()) or buffer.size() > 1024 * 1024) { // 10MB
             query(buffer);
             buffer = "";
         }
     }
 
+    /** Writes all buffers to the database immediately.
+     */
+    void flush() {
+        for (auto & i : buffers_) {
+            insertInto(i.first, "", true);
+        }
+    }
 
     /** Writes the project info to the database.
      */
@@ -152,44 +197,27 @@ private:
         for (auto const & i : tokens) {
             insertInto(c.tableTokenText, STR(
                 i.first << "," <<
+                i.second.size() << "," <<
                 escape(i.second)));
         }
     }
 
-    void writeCloneGroups(std::map<Hash, CloneGroup> const & groups, Context const & c) {
-        auto i = groups.begin(), e = groups.end();
-        while (i != e) {
-            std::stringstream sg;
-            std::stringstream cp;
-            sg << "INSERT INTO " << c.tableCloneGroups << " VALUES ";
-            cp << "INSERT INTO " << c.tableClonePairs << " VALUES ";
-            sg << "(" << i->second.id << "," << i->second.oldestId << ")";
-            cp << "(" << i->second.id << "," << i->second.id << ")";
-            unsigned ii = 1000;
-            while (++i != e and --ii != 0) {
-                sg << ",(" << i->second.id << "," << i->second.oldestId << ")";
-                cp << ",(" << i->second.id << "," << i->second.id << ")";
-            }
-            query(sg.str());
-            query(cp.str());
-            sg.clear();
-            cp.clear();
-        }
+    void writeCloneGroup(CloneGroup const * group, Context const & c) {
+        insertInto(c.tableCloneGroups, STR(
+            group->id << "," <<
+            group->oldestId));
+        // also make sure the first file in the group belongs to it
+        insertInto(c.tableClonePairs, STR(
+            group->id << "," <<
+            group->id));
     }
 
-    void writeTokenInfo(std::map<Hash, TokenInfo> const & tokens, Context const & c) {
-        auto i = tokens.begin(), e = tokens.end();
-        while (i != e) {
-            std::stringstream ss;
-            ss << "INSERT INTO " << c.tableTokens << " VALUES ";
-            ss << "(" << i->second.id << "," << i->second.size << "," << i->second.uses << ")";
-            unsigned ii = 1000;
-            while (++i != e and ii-- != 0)
-                ss << ",(" << i->second.id << "," << i->second.size << "," << i->second.uses << ")";
-            query(ss.str());
-            ss.clear();
-        }
+    void writeTokenInfo(TokenInfo const * ti, Context const & c) {
+        insertInto(c.tableTokens, STR(
+            ti->id << "," <<
+            ti->uses));
     }
+
 
     void process() override {
         // if it is project, use default context as projects table is identical for all tokenizers
@@ -204,8 +232,13 @@ private:
         else {
             assert (job_.mergerStats != nullptr);
             Context const & c = contexts_[static_cast<unsigned>(job_.mergerStats->tokenizer)];
-            writeCloneGroups(job_.mergerStats->cloneGroups, c);
-            writeTokenInfo(job_.mergerStats->tokens, c);
+            switch (job_.mergerStats->kind) {
+                case MergerStats::Kind::CloneGroup:
+                    writeCloneGroup(job_.mergerStats->cloneGroup, c);
+                    break;
+                case MergerStats::Kind::TokenInfo:
+                    writeTokenInfo(job_.mergerStats->tokenInfo, c);
+            }
         }
     }
 
@@ -234,7 +267,7 @@ private:
             resetDatabase(c);
     }
 
-    void checkTablesIndexes(Context const & c) {
+    void checkTables(Context const & c) {
         if (c.tableProjects.empty())
             return; // unused context
         // table for basic project information, compatible with sourcerer CC
@@ -292,88 +325,23 @@ private:
         // tokens and their freqencies (this is dumped once at the end of the run)
         query(STR("CREATE TABLE IF NOT EXISTS " << c.tableTokens << " ("
             "id INT NOT NULL,"
-            "size INT NOT NULL,"
             "uses INT NOT NULL,"
             "PRIMARY KEY(id))"));
-
         // unique tokens, new tokens are added each time they are found
         query(STR("CREATE TABLE IF NOT EXISTS " << c.tableTokenText << " ("
             "id INT NOT NULL,"
+            "size INT NOT NULL,"
             "text LONGTEXT NOT NULL,"
             "PRIMARY KEY(id))"));
     }
 
-    /*
-    void checkTables(Context const & c) {
-        if (c.tableProjects.empty())
-            return; // unused context
-        // table for basic project information, compatible with sourcerer CC
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableProjects << " ("
-            "projectId INT(6) NOT NULL,"
-            "projectPath VARCHAR(4000) NULL,"
-            "projectUrl VARCHAR(4000) NOT NULL,"
-            "PRIMARY KEY (projectId))"));
-        // extra information about projects
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableProjectsExtra << " ("
-            "projectId INT NOT NULL,"
-            "createdAt INT UNSIGNED NOT NULL,"
-            "PRIMARY KEY (projectId))"));
-        // table for all files found, compatible with sourcerer CC
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFiles << " ("
-            "fileId BIGINT(6) UNSIGNED NOT NULL,"
-            "projectId INT(6) UNSIGNED NOT NULL,"
-            "relativeUrl VARCHAR(4000) NOT NULL,"
-            "fileHash CHAR(32) NOT NULL,"
-            "PRIMARY KEY (fileId))"));
-        // extra information about files
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFilesExtra << " ("
-            "fileId INT NOT NULL,"
-            "createdAt INT UNSIGNED NOT NULL,"
-            "PRIMARY KEY (fileId))"));
-        // statistics for unique files (based on *file* hash)
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableFileStats << " ("
-            "fileHash CHAR(32) NOT NULL,"
-            "fileBytes INT(6) UNSIGNED NOT NULL,"
-            "fileLines INT(6) UNSIGNED NOT NULL,"
-            "fileLOC INT(6) UNSIGNED NOT NULL,"
-            "fileSLOC INT(6) UNSIGNED NOT NULL,"
-            "totalTokens INT(6) UNSIGNED NOT NULL,"
-            "uniqueTokens INT(6) UNSIGNED NOT NULL,"
-            "tokenHash CHAR(32) NOT NULL,"
-            "PRIMARY KEY (fileHash))"));
-        // tokenizer clone pairs (no counterpart in sourcerer CC)
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableClonePairs << " ("
-            "fileId INT NOT NULL,"
-            "groupId INT NOT NULL,"
-            "PRIMARY KEY(fileId))"));
-        // tokenizer clone groups (no counterpart in sourcerer CC)
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableCloneGroups << " ("
-            "groupId INT NOT NULL,"
-            "oldestId INT NOT NULL,"
-            "PRIMARY KEY(groupId))"));
-        // tokens and their freqencies (this is dumped once at the end of the run)
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableTokens << " ("
-            "id INT NOT NULL,"
-            "size INT NOT NULL,"
-            "uses INT NOT NULL,"
-            "PRIMARY KEY(id))"));
-
-        // unique tokens, new tokens are added each time they are found
-        query(STR("CREATE TABLE IF NOT EXISTS " << c.tableTokenText << " ("
-            "id INT NOT NULL,"
-            "text LONGTEXT NOT NULL,"
-            "PRIMARY KEY(id))"));
-    } */
 
     void checkTables() {
         for (Context & c : contexts_)
-            checkTablesIndexes(c);
+            checkTables(c);
     }
 
-
-
     MYSQL * c_;
-
 
     std::map<std::string, std::string> buffers_;
 

@@ -80,6 +80,7 @@ std::unordered_set<std::string> JavaScriptTokenizer::jsKeywords_ = initializeJSK
 bool JavaScriptTokenizer::ignoreComments_ = true;
 bool JavaScriptTokenizer::ignoreSeparators_ = true;
 bool JavaScriptTokenizer::ignoreWhitespace_ = true;
+std::atomic_uint JavaScriptTokenizer::errorFiles_(0);
 
 
 bool JavaScriptTokenizer::isKeyword(std::string const &s) {
@@ -541,4 +542,7 @@ void JavaScriptTokenizer::tokenize() {
         }
         expectRegExp = true;
     }
+    // increase error counter if there were JS error files
+    if (tf().errors > 0)
+        ++errorFiles_;
 }

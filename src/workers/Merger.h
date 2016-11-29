@@ -18,6 +18,11 @@ public:
     MergerJob(std::shared_ptr<TokensMap> ptr):
         std::shared_ptr<TokensMap>(ptr) {
     }
+
+    friend std::ostream & operator << (std::ostream & s, MergerJob const & j) {
+        s << "File id " << j->file->id << ", url: " << j->file->project->url << "/" << j->file->relPath;
+        return s;
+    }
 };
 
 
@@ -36,8 +41,49 @@ public:
     static void AddTokenizer(TokenizerKind k) {
         unsigned idx = static_cast<unsigned>(k);
         if (contexts_.size() < idx + 1)
-            contexts_.resize(idx + 1);
+            contexts_.resize(idx + 1,nullptr);
         contexts_[idx] = new Context();
+    }
+
+    static unsigned NumCloneGroups() {
+        unsigned result = 0;
+        for (Context const * c : contexts_)
+            if (c != nullptr)
+                result += c->cloneGroups.size();
+        return result;
+    }
+
+    static unsigned NumCloneGroups(TokenizerKind kind) {
+        return contexts_[static_cast<unsigned>(kind)]->cloneGroups.size();
+    }
+
+    static unsigned NumTokens() {
+        unsigned result = 0;
+        for (Context const * c : contexts_)
+            if (c != nullptr)
+                result += c->tokenInfo.size();
+        return result;
+    }
+    static unsigned NumTokens(TokenizerKind kind) {
+        return contexts_[static_cast<unsigned>(kind)]->tokenInfo.size();
+    }
+
+    static unsigned UniqueFileHashes() {
+        return uniqueFileHashes_.size();
+    }
+
+    static void FlushStatistics() {
+        for (unsigned i = 0; i < contexts_.size(); ++i) {
+            Context * c = contexts_[i];
+            if (c == nullptr)
+                continue;
+            for (auto const & ii : c->cloneGroups)
+                DBWriter::Schedule(DBWriterJob(new MergerStats(static_cast<TokenizerKind>(i), & ii.second)));
+            for (auto const & ii : c->tokenInfo)
+                DBWriter::Schedule(DBWriterJob(new MergerStats(static_cast<TokenizerKind>(i), & ii.second)));
+
+
+        }
     }
 
 private:

@@ -33,6 +33,10 @@ public:
         return ignoreWhitespace_;
     }
 
+    static unsigned ErrorFiles() {
+        return errorFiles_;
+    }
+
 private:
 
 
@@ -150,6 +154,8 @@ private:
     static bool ignoreComments_;
     static bool ignoreSeparators_;
     static bool ignoreWhitespace_;
+
+    static std::atomic_uint errorFiles_;
 
 
 };

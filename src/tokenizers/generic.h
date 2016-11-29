@@ -2,7 +2,6 @@
 
 #include <map>
 #include <fstream>
-#include <cassert>
 #include <iostream>
 
 #include "../data.h"
@@ -47,7 +46,11 @@ protected:
     }
 
     void pop(unsigned by) {
-        assert(by > 0);
+        if (by == 0) {
+            Thread::Error("Advancing by 0 in tokenizer, updated to one");
+            by = 1;
+        }
+        //assert(by > 0);
         while (by-- > 0)
             pop();
     }
@@ -77,7 +80,8 @@ protected:
 
     std::string substr(unsigned start, unsigned length) {
         if (length == 0) {
-            assert(false);
+            Thread::Error("Empty substring calculated in tokenizer");
+            // assert(false);
             return "";
         }
         return file_.substr(start, length);

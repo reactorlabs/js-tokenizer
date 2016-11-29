@@ -14,6 +14,12 @@ public:
     WriterJob(std::shared_ptr<TokensMap> ptr):
         std::shared_ptr<TokensMap>(ptr) {
     }
+
+    friend std::ostream & operator << (std::ostream & s, WriterJob const & j) {
+        s << "File id " << j->file->id << ", url: " << j->file->project->url << "/" << j->file->relPath;
+        return s;
+    }
+
 };
 
 /** Writes the tokens map to the output files based on the tokenizer used.
