@@ -26,8 +26,11 @@ public:
  */
 class Writer : public Worker<WriterJob> {
 public:
+    static char const * Name() {
+        return "FILE WRITER";
+    }
     Writer(unsigned index):
-        Worker<WriterJob>("WRITER", index) {
+        Worker<WriterJob>(Name(), index) {
 
         // initialize the contexts (i.e. create the output files)
         for (TokenizerKind k : tokenizers_) {

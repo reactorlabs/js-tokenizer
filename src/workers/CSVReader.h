@@ -10,8 +10,12 @@
 
 class CSVReader : public Worker<std::string> {
 public:
+    static char const * Name() {
+        return "CSV READER";
+    }
+
     CSVReader(unsigned index):
-        Worker<std::string>("CSV READER", index) {
+        Worker<std::string>(Name(), index) {
     }
 
     static void SetLanguage(std::string const & value) {
@@ -99,6 +103,7 @@ private:
     }
 
     virtual void process() {
+        unsigned counter = 0;
         f_.open(job_);
         if (not f_.good())
             throw STR("Unable to open CSV file " << job_);
@@ -106,6 +111,9 @@ private:
             // parse row
             parseRow();
             if (row_.size() > 0) {
+                // use only every n-th project (this is the stride)
+                if (counter++ % ClonedProject::StrideCount() != ClonedProject::StrideIndex())
+                    continue;
                 ++totalProjects_;
                 if (projectLanguage() == language_) {
                     ++languageProjects_;

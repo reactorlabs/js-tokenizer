@@ -89,8 +89,16 @@ inline std::string prefix(TokenizerKind k) {
 class ClonedProject : public ObjectsCounter<ClonedProject> {
 public:
 
-    static void SetKeepProjects(bool value) {
-        keepProjects_ = value;
+    static unsigned & StrideCount() {
+        return stride_count_;
+    }
+
+    static unsigned & StrideIndex() {
+        return stride_index_;
+    }
+
+    static bool & KeepProjects() {
+        return keepProjects_;
     }
 
     ClonedProject(int id, std::string const & url, unsigned createdAt):
@@ -121,9 +129,14 @@ public:
     std::string url;
     unsigned createdAt;
     std::string path;
+    std::string commit;
 
 private:
     static bool keepProjects_;
+    /** Number of strides to be executed */
+    static unsigned stride_count_;
+    /** Index of the current stride */
+    static unsigned stride_index_;
 };
 
 /** Contains a tokenized file.
@@ -131,10 +144,14 @@ private:
 class TokenizedFile : public ObjectsCounter<TokenizedFile> {
 public:
 
+    static void InitializeStrideId() {
+        idCounter_ = ClonedProject::StrideIndex();
+    }
+
     /** Retrns new id for a file so that the same files tokenized by different tokenizers have the same ids.
      */
     static int GetNewId() {
-        return idCounter_++;
+        return idCounter_.fetch_add(ClonedProject::StrideCount());
     }
 
     TokenizedFile(int id, std::shared_ptr<ClonedProject> const & project, std::string relPath, unsigned cdate):
@@ -198,6 +215,12 @@ public:
         oldestTime(-1) {
     }
 
+    CloneGroup(int id, int oldestId, unsigned oldestTime):
+        id(id),
+        oldestId(oldestId),
+        oldestTime(oldestTime) {
+    }
+
     int update(TokenizedFile & f) {
         if (id == -1) {
             id = f.id;
@@ -223,6 +246,12 @@ public:
     TokenInfo():
         id(idCounter_++),
         uses(0) {
+    }
+
+    TokenInfo(int id, unsigned uses):
+        id(id),
+        uses(uses) {
+        idCounter_ = id + 1; // update the id counter
     }
 
     bool update(std::string const & token, unsigned uses) {

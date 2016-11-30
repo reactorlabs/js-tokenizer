@@ -67,7 +67,7 @@ protected:
     }
 
     void newline(bool isEmpty, bool isComment) {
-        //if (isComment and not isEmpty)
+        //if (isEmpty)
         //    std::cout << tf_->lines << " " << isEmpty << " " << isComment << std::endl;
         ++tf_->lines;
         if (not isEmpty)

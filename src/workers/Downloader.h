@@ -30,8 +30,12 @@ public:
  */
 class Downloader : public Worker<DownloaderJob> {
 public:
+    static char const * Name() {
+        return "DOWNLOADER";
+    }
+
     Downloader(unsigned index):
-        Worker<DownloaderJob>("DOWNLOADER", index) {
+        Worker<DownloaderJob>(Name(), index) {
     }
 
     static void SetDownloadDir(std::string const & value) {
@@ -52,9 +56,12 @@ private:
     virtual void process() {
         job_->path = STR(downloadDir_ << "/" << job_->id);
         // TODO THIS IS SUPER STUPID  -- DELETE ME
-/*
+
         if (not isDirectory(job_->path))
             throw (STR("Unable to clone project"));
+
+        // get the commit number
+        job_->commit = exec("git rev-parse HEAD", job_->path);
 
         // and of course, pass it to the tokenizer
         Tokenizer::Schedule(TokenizerJob(job_));
@@ -66,9 +73,10 @@ private:
             escape(job_->url)));
         projectsExtra_.append(STR(
             job_->id << "," <<
-            job_->createdAt));
+            job_->createdAt << "," <<
+            escape(job_->commit)));
 
-        return; */
+        return;
 
         // NORMAL CODE GOES ON HERE
 
@@ -86,6 +94,9 @@ private:
         if (not isFile(STR(job_->path << "/cdate.js.tokenizer.txt")))
             throw (STR("Unable to create cdate files in project"));
 
+        // get the commit number
+        job_->commit = exec("git rev-parse HEAD", job_->path);
+
         // and of course, pass it to the tokenizer
         Tokenizer::Schedule(TokenizerJob(job_));
 
@@ -96,7 +107,8 @@ private:
             escape(job_->url)));
         projectsExtra_.append(STR(
             job_->id << "," <<
-            job_->createdAt));
+            job_->createdAt << "," <<
+            escape(job_->commit)));
     }
 
 

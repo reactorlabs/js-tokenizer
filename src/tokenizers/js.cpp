@@ -181,11 +181,14 @@ void JavaScriptTokenizer::numericLiteralExponentPart() {
 void JavaScriptTokenizer::templateLiteral() {
     unsigned start = pos();
     pop(1);
+    hasStuff_ = true;
     while (not eof() and top() != '`') {
         if (top() == '\\')
             pop(1);
-        else if (top() == '\n')
+        else if (top() == '\n') {
             newline();
+            hasStuff_ = true;
+        }
         pop(1);
     }
     if (not eof()) {

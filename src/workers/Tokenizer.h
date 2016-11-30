@@ -28,8 +28,12 @@ public:
 
 class Tokenizer : public Worker<TokenizerJob> {
 public:
+    static char const * Name() {
+        return "TOKENIZER";
+    }
+
     Tokenizer(unsigned index):
-        Worker<TokenizerJob>("TOKENIZER", index) {
+        Worker<TokenizerJob>(Name(), index) {
     }
 
     static unsigned TotalFiles() {
@@ -148,6 +152,7 @@ private:
         std::ifstream cdates(STR(job_->path << "/cdate.js.tokenizer.txt"));
         if (not cdates.good())
             throw STR("Downloader must make sure that the cdate.js.tokenizer.txt file exists");
+
         // parse the cdates file and tokenize each language file found
 
         int date = 0;

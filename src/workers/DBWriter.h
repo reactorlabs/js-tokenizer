@@ -7,6 +7,69 @@
 #include "../data.h"
 #include "../worker.h"
 
+class RAII {
+public:
+    RAII(std::function<void(void)> f):
+        f_(f) {
+    }
+
+    ~RAII() {
+        f_();
+    }
+private:
+    std::function<void(void)> f_;
+
+
+};
+
+class SQLConnection {
+public:
+
+    static void SetConnection(std::string const & server, std::string const & user, std::string const & pass) {
+        server_ = server;
+        user_ = user;
+        pass_ = pass;
+    }
+
+    SQLConnection() {
+        c_ = mysql_init(nullptr);
+        if (c_ == nullptr)
+            throw STR("Unable to create sql connection");
+        if (mysql_real_connect(c_, server_.c_str(), user_.c_str(), pass_.c_str(), nullptr, 0, nullptr, 0) == nullptr)
+            throw STR("Unable to connect to sql server " << server_ << " using given credentials: " << mysql_error(c_));
+    }
+
+    ~SQLConnection() {
+        mysql_close(c_);
+    }
+
+    void query(std::string const & q) {
+        if (mysql_query(c_, q.c_str()) != 0)
+            throw STR("SQL error: " << mysql_error(c_) << " in query: " << q);
+    }
+
+    void query(std::string const & q, std::function<void(unsigned, char**)> f) {
+        query(q);
+        MYSQL_RES * result = mysql_store_result(c_);
+        if (result == nullptr)
+            throw STR("SQL error: " << mysql_error(c_) << " when getting result of: " << q);
+        // make sure we free result whatever happens
+        RAII raii([result]() { mysql_free_result(result); });
+        unsigned numFields = mysql_num_fields(result);
+        // now process the query, calling f on each row
+        MYSQL_ROW row;
+        while (row = mysql_fetch_row(result))
+            f(numFields, row);
+    }
+private:
+    MYSQL * c_;
+
+    static std::string server_;
+    static std::string user_;
+    static std::string pass_;
+};
+
+
 class DBWriterJob {
 public:
 
@@ -27,24 +90,35 @@ public:
 
 };
 
-class DBWriter : public Worker<DBWriterJob> {
+class DBWriter : public Worker<DBWriterJob>, SQLConnection {
 public:
+    static char const * Name() {
+        return "DB WRITER";
+    }
     DBWriter(unsigned index):
-        Worker<DBWriterJob>("DB WRITER", index) {
-        std::lock_guard<std::mutex> g(m_);
-        c_ = mysql_init(nullptr);
-        if (c_ == nullptr)
-            throw STR("Unable to create MySQL connection");
-        if (mysql_real_connect(c_, host_.c_str(), user_.c_str(), pass_.c_str(), db_.c_str(), 0, nullptr, 0) == nullptr)
-            throw STR("Unable to connect to server " << host_ << ", db " << db_ << " using username " << user_ << " password_ " << pass_);
+        Worker<DBWriterJob>(Name(), index),
+        SQLConnection() {
+        query(STR("USE " << db_));
     }
 
-    static void SetConnection(std::string const & server, std::string const db, std::string const & username, std::string const password) {
-        host_ = server;
-        db_ = db;
-        user_ = username;
-        pass_ = password;
+    static std::string & DatabaseName() {
+        return db_;
     }
+
+    static std::string const TableStamp;
+    static std::string const TableProjects;
+    static std::string const TableProjectsExtra;
+    static std::string const TableFiles;
+    static std::string const TableFilesExtra;
+    static std::string const TableStats;
+    static std::string const TableClonePairs;
+    static std::string const TableCloneGroups;
+    static std::string const TableTokensText;
+    static std::string const TableTokens;
+    static std::string const TableTokenHashes;
+    static std::string const TableCloneGroupHashes;
+
+
 
     static void ResetDatabase() {
         DBWriter db(123456);
@@ -153,20 +227,8 @@ private:
         query(job_.buffer);
     }
 
-    void query(std::string const & what) {
-        int status = mysql_query(c_, what.c_str());
-        if (status != 0)
-            throw STR("SQL error on: " << what);
-    }
 
-    MYSQL * c_;
-
-    static std::string host_;
-    static std::string user_;
-    static std::string pass_;
     static std::string db_;
-
-    static std::mutex m_;
 
 };
 

@@ -34,8 +34,12 @@ public:
  */
 class Merger : public Worker<MergerJob> {
 public:
+    static char const * Name() {
+        return "MERGER";
+    }
+
     Merger(unsigned index):
-        Worker<MergerJob>("MERGER", index) {
+        Worker<MergerJob>(Name(), index) {
     }
 
     static void AddTokenizer(TokenizerKind k) {
@@ -90,6 +94,18 @@ public:
         return contexts_[static_cast<unsigned>(kind)]->uniqueFileHashes.size();
     }
 
+    static void AddUniqueFileHash(TokenizerKind kind, Hash hash) {
+        contexts_[static_cast<unsigned>(kind)]->uniqueFileHashes.insert(hash);
+    }
+
+    static void AddCloneGroup(TokenizerKind kind, Hash hash, CloneGroup const & group) {
+        contexts_[static_cast<unsigned>(kind)]->cloneGroups[hash] = group;
+    }
+
+    static void AddTokenInfo(TokenizerKind kind, Hash hash, TokenInfo const & group) {
+        contexts_[static_cast<unsigned>(kind)]->tokenInfo[hash] = group;
+    }
+
     /** Flushes the buffers making sure if they contain any data, this will be written to the database.
      */
     static void FlushBuffers() {
@@ -109,11 +125,19 @@ public:
                 buffers_[c->tableClonePairs].append(STR(
                     ii.second.id << "," <<
                     ii.second.id));
+                // clone group hash for snapshoting
+                buffers_[c->tableCloneGroupHashes].append(STR(
+                    ii.second.id << "," <<
+                    escape(ii.first)));
             }
             for (auto const & ii : c->tokenInfo) {
                 buffers_[c->tableTokens].append(STR(
                     ii.second.id << "," <<
                     ii.second.uses));
+                // token info hash for snapshoting
+                buffers_[c->tableTokenHashes].append(STR(
+                    ii.second.id << "," <<
+                    escape(ii.first)));
             }
         }
         FlushBuffers();
@@ -130,28 +154,34 @@ private:
 
         std::string tableFiles;
         std::string tableFilesExtra;
-        std::string tableFileStats;
+        std::string tableStats;
         std::string tableClonePairs;
         std::string tableCloneGroups;
-        std::string tableTokenText;
+        std::string tableTokensText;
         std::string tableTokens;
+        std::string tableTokenHashes;
+        std::string tableCloneGroupHashes;
 
         Context(TokenizerKind k) {
             std::string p = prefix(k);
-            tableFiles = p + "files";
-            tableFilesExtra = p + "files_extra";
-            tableFileStats = p + "stats";
-            tableClonePairs = p + "clone_pairs";
-            tableCloneGroups = p + "clone_groups";
-            tableTokenText = p + "token_text";
-            tableTokens = p + "tokens";
+            tableFiles = p + DBWriter::TableFiles;
+            tableFilesExtra = p + DBWriter::TableFilesExtra;
+            tableStats = p + DBWriter::TableStats;
+            tableClonePairs = STR(p << DBWriter::TableClonePairs << "_" << ClonedProject::StrideIndex());
+            tableCloneGroups = STR(p << DBWriter::TableCloneGroups << "_" << ClonedProject::StrideIndex());
+            tableTokensText = STR(p << DBWriter::TableTokensText << "_" << ClonedProject::StrideIndex());
+            tableTokens = STR(p << DBWriter::TableTokens << "_" << ClonedProject::StrideIndex());
+            tableTokenHashes = STR(p << DBWriter::TableTokenHashes << "_" << ClonedProject::StrideIndex());
+            tableCloneGroupHashes = STR(p << DBWriter::TableCloneGroupHashes << "_" << ClonedProject::StrideIndex());
             Merger::buffers_[tableFiles].setTableName(tableFiles);
             Merger::buffers_[tableFilesExtra].setTableName(tableFilesExtra);
-            Merger::buffers_[tableFileStats].setTableName(tableFileStats);
+            Merger::buffers_[tableStats].setTableName(tableStats);
             Merger::buffers_[tableClonePairs].setTableName(tableClonePairs);
             Merger::buffers_[tableCloneGroups].setTableName(tableCloneGroups);
-            Merger::buffers_[tableTokenText].setTableName(tableTokenText);
+            Merger::buffers_[tableTokensText].setTableName(tableTokensText);
             Merger::buffers_[tableTokens].setTableName(tableTokens);
+            Merger::buffers_[tableTokenHashes].setTableName(tableTokenHashes);
+            Merger::buffers_[tableCloneGroupHashes].setTableName(tableCloneGroupHashes);
         }
     };
 
@@ -174,7 +204,7 @@ private:
       Schedules any newly created tokens to be written to the database at the end.
      */
     void translateTokensToIds(Context & context) {
-        DBBuffer & b = buffers_[context.tableTokenText];
+        DBBuffer & b = buffers_[context.tableTokensText];
         std::unordered_map<std::string, unsigned> translatedTokens;
         for (auto & i : job_->tokens) {
             // create a hash of the token
@@ -213,7 +243,7 @@ private:
             job_->file->createdAt));
         // if the file has unique hash output also its statistics
         if (hasUniqueFileHash(* job_->file, c)) {
-            buffers_[c.tableFileStats].append(STR(
+            buffers_[c.tableStats].append(STR(
                 escape(job_->file->fileHash) << "," <<
                 job_->file->bytes << "," <<
                 job_->file->lines << "," <<

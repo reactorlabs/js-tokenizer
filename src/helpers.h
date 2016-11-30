@@ -16,6 +16,14 @@
 */
 #define STR(WHAT) static_cast<std::stringstream&>(std::stringstream() << WHAT).str()
 
+inline unsigned char fromHex(char what) {
+    if (what >= 'a')
+        return (what - 'a') + 10;
+    else
+        return what - '0';
+}
+
+
 /** Compressed hash so that it occupies less space.
  */
 struct Hash {
@@ -25,6 +33,17 @@ struct Hash {
     Hash():
         first(0),
         second(0) {
+    }
+
+    static Hash Parse(char const * from) {
+        Hash h;
+        unsigned char * x = reinterpret_cast<unsigned char *>(&h);
+        unsigned j = 0;
+        for (unsigned i = 0; i < 16; ++i) {
+            x[i] = fromHex(from[j]) * 16 + fromHex(from[j + 1]);
+            j += 2;
+        }
+        return h;
     }
 
     /** Constructs the hash from given string as computed by the hashlibrary.
@@ -57,7 +76,7 @@ struct Hash {
     std::string pack() const {
         std::stringstream s;
         unsigned char const * x = reinterpret_cast<unsigned char const *>(this);
-        for (int i = 0; i < 16; i++)
+        for (int i = 0; i < 16; ++i)
             s << (char) (x[i]);
         return s.str();
     }
@@ -73,7 +92,7 @@ struct Hash {
     friend std::ostream & operator << (std::ostream & s, Hash const & h) {
         static const char dec2hex[16+1] = "0123456789abcdef";
         unsigned char const * x = reinterpret_cast<unsigned char const *>(&h);
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 16; ++i) {
             s << dec2hex[(x[i] >> 4) & 15];
             s << dec2hex[(x[i]) & 15];
         }
@@ -126,7 +145,7 @@ inline std::string xbytes(unsigned long b) {
 }
 
 inline std::string escape(Hash const & what) {
-    return STR("\"" << std::hex << std::setfill('0') << std::setw(16) << what.first << what.second << "\"");
+    return STR("\"" << what << "\"");
 }
 
 
