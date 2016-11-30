@@ -143,11 +143,8 @@ private:
     void checkData();
 
 
-
-    bool emptyLine_;
-    bool commentLine_;
-
-
+    bool hasComment_;
+    bool hasStuff_;
 
     static std::unordered_set<std::string> jsKeywords_;
 

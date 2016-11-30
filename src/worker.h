@@ -178,27 +178,10 @@ protected:
             assert(className_ == className);
     }
 
-    JOB job_;
-
-    static std::queue<JOB> jobs_;
-
-protected:
     // Errors (# of exceptions thrown by the process method)
     static std::atomic_uint errors_;
 
-    virtual void getJob() {
-        std::unique_lock<std::mutex> g(qm_);
-        while (jobs_.empty()) {
-            ++idleThreads_;
-            hasIdled_ = true;
-            qcv_.wait(g);
-            --idleThreads_;
-        }
-        job_ = jobs_.front();
-        jobs_.pop();
-        if (not queueFull())
-            qcvAdd_.notify_one();
-    }
+    JOB job_;
 
 private:
 
@@ -217,6 +200,19 @@ private:
         --stalledThreads_;
     }
 
+    void getJob() {
+        std::unique_lock<std::mutex> g(qm_);
+        while (jobs_.empty()) {
+            ++idleThreads_;
+            hasIdled_ = true;
+            qcv_.wait(g);
+            --idleThreads_;
+        }
+        job_ = jobs_.front();
+        jobs_.pop();
+        if (not queueFull())
+            qcvAdd_.notify_one();
+    }
 
 
     // Name of the particular worker's class
@@ -235,6 +231,9 @@ private:
     static std::atomic_uint jobsDone_;
     // Fatal errors, i.e. the number of unrecognized exceptions thrown from the process method
     static std::atomic_uint fatalErrors_;
+
+    // Jobs queue
+    static std::queue<JOB> jobs_;
 
     // Queue access mutex
     static std::mutex qm_;

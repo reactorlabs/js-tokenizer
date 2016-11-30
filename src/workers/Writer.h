@@ -34,7 +34,7 @@ public:
             unsigned idx = static_cast<unsigned>(k);
             if (contexts_.size() < idx + 1)
                 contexts_.resize(idx + 1);
-            std::string filename = STR(outputDir_ << prefix(k) << "tokens-" << index << ".txt");
+            std::string filename = STR(outputDir_ << "/" << prefix(k) << "tokens-" << index << ".txt");
             contexts_[idx].f.open(filename);
             if (not contexts_[idx].f.good())
                 throw STR("Unable to open output file " << filename);

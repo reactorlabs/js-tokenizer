@@ -42,7 +42,7 @@ public:
         unsigned idx = static_cast<unsigned>(k);
         if (contexts_.size() < idx + 1)
             contexts_.resize(idx + 1,nullptr);
-        contexts_[idx] = new Context();
+        contexts_[idx] = new Context(k);
     }
 
     static unsigned NumCloneGroups() {
@@ -54,7 +54,12 @@ public:
     }
 
     static unsigned NumCloneGroups(TokenizerKind kind) {
-        return contexts_[static_cast<unsigned>(kind)]->cloneGroups.size();
+        unsigned idx = static_cast<unsigned>(kind);
+        if (idx >= contexts_.size())
+            return 0;
+        if (contexts_[idx] == nullptr)
+            return 0;
+        return contexts_[idx]->cloneGroups.size();
     }
 
     static unsigned NumTokens() {
@@ -65,11 +70,31 @@ public:
         return result;
     }
     static unsigned NumTokens(TokenizerKind kind) {
-        return contexts_[static_cast<unsigned>(kind)]->tokenInfo.size();
+        unsigned idx = static_cast<unsigned>(kind);
+        if (idx >= contexts_.size())
+            return 0;
+        if (contexts_[idx] == nullptr)
+            return 0;
+        return contexts_[idx]->tokenInfo.size();
     }
 
     static unsigned UniqueFileHashes() {
-        return uniqueFileHashes_.size();
+        unsigned result = 0;
+        for (Context const * c : contexts_)
+            if (c != nullptr)
+                result += c->uniqueFileHashes.size();
+        return result;
+    }
+
+    static unsigned UniqueFileHashes(TokenizerKind kind) {
+        return contexts_[static_cast<unsigned>(kind)]->uniqueFileHashes.size();
+    }
+
+    /** Flushes the buffers making sure if they contain any data, this will be written to the database.
+     */
+    static void FlushBuffers() {
+        for (auto & i : buffers_)
+            i.second.flush();
     }
 
     static void FlushStatistics() {
@@ -77,34 +102,71 @@ public:
             Context * c = contexts_[i];
             if (c == nullptr)
                 continue;
-            for (auto const & ii : c->cloneGroups)
-                DBWriter::Schedule(DBWriterJob(new MergerStats(static_cast<TokenizerKind>(i), & ii.second)));
-            for (auto const & ii : c->tokenInfo)
-                DBWriter::Schedule(DBWriterJob(new MergerStats(static_cast<TokenizerKind>(i), & ii.second)));
-
-
+            for (auto const & ii : c->cloneGroups) {
+                buffers_[c->tableCloneGroups].append(STR(
+                    ii.second.id << "," <<
+                    ii.second.oldestId));
+                buffers_[c->tableClonePairs].append(STR(
+                    ii.second.id << "," <<
+                    ii.second.id));
+            }
+            for (auto const & ii : c->tokenInfo) {
+                buffers_[c->tableTokens].append(STR(
+                    ii.second.id << "," <<
+                    ii.second.uses));
+            }
         }
+        FlushBuffers();
     }
 
 private:
     struct Context {
         std::unordered_map<Hash, CloneGroup> cloneGroups;
         std::unordered_map<Hash, TokenInfo> tokenInfo;
+        std::unordered_set<Hash> uniqueFileHashes;
         std::mutex mCloneGroups;
         std::mutex mTokenInfo;
+        std::mutex mFileHash;
 
+        std::string tableFiles;
+        std::string tableFilesExtra;
+        std::string tableFileStats;
+        std::string tableClonePairs;
+        std::string tableCloneGroups;
+        std::string tableTokenText;
+        std::string tableTokens;
+
+        Context(TokenizerKind k) {
+            std::string p = prefix(k);
+            tableFiles = p + "files";
+            tableFilesExtra = p + "files_extra";
+            tableFileStats = p + "stats";
+            tableClonePairs = p + "clone_pairs";
+            tableCloneGroups = p + "clone_groups";
+            tableTokenText = p + "token_text";
+            tableTokens = p + "tokens";
+            Merger::buffers_[tableFiles].setTableName(tableFiles);
+            Merger::buffers_[tableFilesExtra].setTableName(tableFilesExtra);
+            Merger::buffers_[tableFileStats].setTableName(tableFileStats);
+            Merger::buffers_[tableClonePairs].setTableName(tableClonePairs);
+            Merger::buffers_[tableCloneGroups].setTableName(tableCloneGroups);
+            Merger::buffers_[tableTokenText].setTableName(tableTokenText);
+            Merger::buffers_[tableTokens].setTableName(tableTokens);
+        }
     };
 
-    bool hasUniqueFileHash(TokenizedFile & tf) {
-        std::lock_guard<std::mutex> g(mFileHash_);
-        return uniqueFileHashes_.insert(tf.fileHash).second;
+    friend class Context;
+
+    bool hasUniqueFileHash(TokenizedFile & tf, Context & context) {
+        std::lock_guard<std::mutex> g(context.mFileHash);
+        return context.uniqueFileHashes.insert(tf.fileHash).second;
     }
 
     /** Sets the clone group information for the file.
      */
-    void getCloneGroup(Context & context) {
+    int getCloneGroup(Context & context) {
        std::lock_guard<std::mutex> g(context.mCloneGroups);
-       job_->file->groupId = context.cloneGroups[job_->file->tokensHash].update(* job_->file);
+       return context.cloneGroups[job_->file->tokensHash].update(* job_->file);
     }
 
     /** Translates tokens to ids unique across the entire files.
@@ -112,8 +174,8 @@ private:
       Schedules any newly created tokens to be written to the database at the end.
      */
     void translateTokensToIds(Context & context) {
+        DBBuffer & b = buffers_[context.tableTokenText];
         std::unordered_map<std::string, unsigned> translatedTokens;
-        std::shared_ptr<NewTokens> newTokens(new NewTokens(job_->file->tokenizer));
         for (auto & i : job_->tokens) {
             // create a hash of the token
             Hash h = i.first;
@@ -127,40 +189,60 @@ private:
             }
             // check if the token is new
             if (isNew)
-                (*newTokens)[id] = i.first;
+                b.append(STR(
+                     id << "," <<
+                     i.first.size() << "," <<
+                     escape(i.first)));
             // create a record for the translated token and its uses
             translatedTokens[STR(std::hex << id)] = i.second;
         }
         // swap translated tokens for the original tokens in the token map
         job_->tokens = std::move(translatedTokens);
-        // if we have created any new tokens, pass them to the DBWriter.
-        if (not newTokens->tokens.empty())
-            DBWriter::Schedule(DBWriterJob(newTokens));
     }
 
-    void process(Context & context) {
-        // let's first look if we have clone group
-        getCloneGroup(context);
+    void process(Context & c) {
+        // first store the file
+        buffers_[c.tableFiles].append(STR(
+            job_->file->id << "," <<
+            job_->file->project->id << "," <<
+            escape(job_->file->relPath) << "," <<
+            escape(job_->file->fileHash)));
+        // and its extra information
+        buffers_[c.tableFilesExtra].append(STR(
+            job_->file->id << "," <<
+            job_->file->createdAt));
+        // if the file has unique hash output also its statistics
+        if (hasUniqueFileHash(* job_->file, c)) {
+            buffers_[c.tableFileStats].append(STR(
+                escape(job_->file->fileHash) << "," <<
+                job_->file->bytes << "," <<
+                job_->file->lines << "," <<
+                job_->file->loc << "," <<
+                job_->file->sloc << "," <<
+                job_->file->totalTokens << "," <<
+                job_->file->uniqueTokens << "," <<
+                escape(job_->file->tokensHash)));
+        }
         // now let's convert tokens to their unique files
-        translateTokensToIds(context);
+        translateTokensToIds(c);
+        // get the group id and output a clone pair if not -1
+        int groupId = getCloneGroup(c);
+        if (groupId != -1) {
+            buffers_[c.tableClonePairs].append(STR(
+                job_->file->id << "," <<
+                groupId));
+            // also pass the file to the writer so that sourcerer output is written
+            Writer::Schedule(WriterJob(job_));
+        }
     }
 
     virtual void process() {
-        // check if the file has unique clone (this is independent of the tokenizer used)
-        job_->file->fileHashUnique = hasUniqueFileHash(* job_->file);
-
         // get context for the used tokenizer and process tokens & clone pair information
         process(*contexts_[static_cast<unsigned>(job_->file->tokenizer)]);
-
-        // pass the tokenized file to the db writer
-        DBWriter::Schedule(DBWriterJob(job_->file));
-        // and pass the tokens map to the writer if the file is unique
-        if (job_->file->groupId == -1)
-            Writer::Schedule(WriterJob(job_));
     }
 
-    static std::mutex mFileHash_;
-    static std::unordered_set<Hash> uniqueFileHashes_;
     static std::vector<Context * > contexts_;
+
+    static std::map<std::string, DBBuffer> buffers_;
 
 };

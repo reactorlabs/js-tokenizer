@@ -144,7 +144,8 @@ inline std::string escape(std::string const & from) {
             case '\\':
             case '_':
             case '%':
-                result += "\\" + c;
+                result += "\\";
+                result += c;
                 break;
             case '\b':
                 result += "\\b";

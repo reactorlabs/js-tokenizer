@@ -43,9 +43,35 @@ public:
         createDirectory(downloadDir_);
     }
 
+    static void FlushBuffers() {
+        projects_.flush();
+        projectsExtra_.flush();
+    }
+
 private:
     virtual void process() {
         job_->path = STR(downloadDir_ << "/" << job_->id);
+        // TODO THIS IS SUPER STUPID  -- DELETE ME
+/*
+        if (not isDirectory(job_->path))
+            throw (STR("Unable to clone project"));
+
+        // and of course, pass it to the tokenizer
+        Tokenizer::Schedule(TokenizerJob(job_));
+
+        // pass the project to the DB writer.
+        projects_.append(STR(
+            job_->id <<
+            ",NULL," <<
+            escape(job_->url)));
+        projectsExtra_.append(STR(
+            job_->id << "," <<
+            job_->createdAt));
+
+        return; */
+
+        // NORMAL CODE GOES ON HERE
+
         // if the directory exists, delete it first
         if (isDirectory(job_->path))
             job_->deleteFromDisk();
@@ -60,14 +86,22 @@ private:
         if (not isFile(STR(job_->path << "/cdate.js.tokenizer.txt")))
             throw (STR("Unable to create cdate files in project"));
 
-        // the project has been downloaded successfully, pass it to DBWriter
-        DBWriter::Schedule(DBWriterJob(job_));
-
         // and of course, pass it to the tokenizer
         Tokenizer::Schedule(TokenizerJob(job_));
 
+        // pass the project to the DB writer.
+        projects_.append(STR(
+            job_->id <<
+            ",NULL," <<
+            escape(job_->url)));
+        projectsExtra_.append(STR(
+            job_->id << "," <<
+            job_->createdAt));
     }
 
 
     static std::string downloadDir_;
+
+    static DBBuffer projects_;
+    static DBBuffer projectsExtra_;
 };

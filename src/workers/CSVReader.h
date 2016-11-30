@@ -112,12 +112,14 @@ private:
                     if (not isDeleted()) {
                         if (not isForked()) {
                             ++validProjects_;
+                            //if (validProjects_ > 10)
+                            //    break;
                             // pass the project to the downloader
                             try {
-                            Downloader::Schedule(DownloaderJob(new ClonedProject(
-                                std::atoi(row_[0].c_str()),
-                                row_[1].substr(29),
-                                timestampFrom(row_[6]))));
+                                Downloader::Schedule(DownloaderJob(new ClonedProject(
+                                    std::atoi(row_[0].c_str()),
+                                    row_[1].substr(29),
+                                    timestampFrom(row_[6]))));
                             } catch (...) {
                                 Error("Invalid projects row");
                                 ++errors_;

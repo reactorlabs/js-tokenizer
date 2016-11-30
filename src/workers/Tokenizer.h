@@ -190,19 +190,24 @@ private:
         tf->uniqueTokens = tm->tokens.size();
         // now schedule the merger for the tokens map, which has pointer to the file as well
         Merger::Schedule(MergerJob(tm));
-        if (tf->errors > 0)
-            ++errors_;
     }
 
     void tokenize(std::string const & relPath, int cdate) {
+
         std::string path = STR(job_->path << "/" << relPath);
+        if (not isFile(path)) {
+            Log(STR("Skipping " << path << " as it is not a file"));
+            return;
+        }
         std::ifstream s(path, std::ios::in | std::ios::binary);
         // it is actually not an error if the file is not found, just github report also deleted files
         if (s.good()) {
+            //try {
             // load the entire file
             s.seekg(0, std::ios::end);
+            unsigned long resizeSize = s.tellg();
             std::string data;
-            data.resize(s.tellg());
+            data.resize(resizeSize);
             s.seekg(0, std::ios::beg);
             s.read(& data[0], data.size());
             s.close();
@@ -225,7 +230,6 @@ private:
                 ++totalFiles_;
                 totalBytes_ += length;
             }
-
         }
     }
 

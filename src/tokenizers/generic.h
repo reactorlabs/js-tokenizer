@@ -13,6 +13,7 @@ public:
         tf_(tf),
         tokens_(new TokensMap(tf)),
         pos_(0) {
+        tf->lines = 1; // every file has at least one line
     }
 
     virtual void tokenize()  = 0;
@@ -66,16 +67,20 @@ protected:
     }
 
     void newline(bool isEmpty, bool isComment) {
+        //if (isComment and not isEmpty)
+        //    std::cout << tf_->lines << " " << isEmpty << " " << isComment << std::endl;
         ++tf_->lines;
         if (not isEmpty)
             ++tf_->sloc;
-        if (not isComment)
+        if (not isComment and not isEmpty)
             ++tf_->loc;
     }
 
     void addToken(unsigned start, unsigned length) {
-        if (length > 0)
+        if (length > 0) {
             ++tokens()[file_.substr(start, length)];
+            ++tf_->totalTokens;
+        }
     }
 
     std::string substr(unsigned start, unsigned length) {
@@ -116,7 +121,9 @@ public:
         hasToken_ = false;
         unsigned start = 0;
         unsigned tokenLength_ = 0;
+        char c ;
         while (not eof()) {
+            c = top();
             if (top() == '/') {
                 // single line comment
                 if (peek(1) == '/') {
@@ -129,8 +136,14 @@ public:
                     pop(2);
                     hasComment_ = true;
                     while (not eof()) {
-                        if (top() == '*' and peek(1) == '/')
+                        if (top() == '\n') {
+                            newline();
+                            hasComment_ = true;
+                        }
+                        else if (top() == '*' and peek(1) == '/') {
+                            pop(2);
                             break;
+                        }
                         pop();
                     }
                 }
@@ -168,6 +181,7 @@ public:
                 case ':':
                 case '$':
                 case '\'':
+                    hasToken_ = true; // separators are people too!
                 case '\t':
                 case ' ':
                 case '\r':
@@ -186,6 +200,11 @@ public:
             }
         }
         addToken(start, tokenLength_);
+        // this is to account for the last line, if it is not empty it will be wrongly calculated
+        if (hasToken_ or hasComment_) {
+            newline();
+            --tf().lines;
+        }
     }
 
 private:
@@ -197,8 +216,10 @@ private:
     }
 
     void addToken(unsigned start, unsigned length) {
-        BaseTokenizer::addToken(start, length);
-        hasToken_ = true;
+        if (length > 0) {
+            BaseTokenizer::addToken(start, length);
+            hasToken_ = true;
+        }
     }
 
 private:

@@ -94,7 +94,8 @@ void JavaScriptTokenizer::addToken(std::string const & s) {
         //exit(1);
     } */
     ++tokens()[s];
-    commentLine_ = false;
+    ++tf().totalTokens;
+    hasStuff_ = true;
 }
 
 void JavaScriptTokenizer::addToken(size_t start) {
@@ -103,14 +104,13 @@ void JavaScriptTokenizer::addToken(size_t start) {
 
 void JavaScriptTokenizer::addSeparator(size_t start) {
     tf().separatorBytes += pos() - start;
-    commentLine_ = false;
+    hasStuff_ = true;
     if (not ignoreSeparators_)
         addToken(start);
 }
 
 void JavaScriptTokenizer::addComment(size_t start) {
     tf().commentBytes += pos() - start;
-    emptyLine_ = false;
     if (not ignoreComments_)
         addToken(start);
 }
@@ -123,9 +123,9 @@ void JavaScriptTokenizer::addWhitespace(size_t start) {
 
 
 void JavaScriptTokenizer::newline() {
-    BaseTokenizer::newline(emptyLine_, commentLine_);
-    commentLine_ = true;
-    emptyLine_ = true;
+    BaseTokenizer::newline(not hasStuff_ and not hasComment_, not hasStuff_ and hasComment_);
+    hasStuff_ = false;
+    hasComment_ = false;
 }
 
 void JavaScriptTokenizer::numericLiteral() {
@@ -296,19 +296,20 @@ bool JavaScriptTokenizer::identifierOrKeyword() {
 
 void JavaScriptTokenizer::singleLineComment() {
     unsigned start = pos();
-    emptyLine_ = false; // the line definitely contains at least the comment
+    hasComment_ = true;
     pop(2); // //
     while (not eof() and top() != '\n')
         pop(1);
-    newline();
-    if (not eof())
-        pop(1);
     addComment(start);
+    if (top() == '\n') {
+        pop(1);
+        newline();
+    }
 }
 
 void JavaScriptTokenizer::multiLineComment() {
+    hasComment_ = true;
     unsigned start = pos();
-    emptyLine_ = false; // the line definitely contains at least the comment
     pop(2); // /*
     while (not eof()) {
         if (top() == '*' and peek(1) == '/') {
@@ -317,7 +318,7 @@ void JavaScriptTokenizer::multiLineComment() {
         } else {
             if (top() == '\n') {
                 newline();
-                emptyLine_ = false; // the line definitely contains at least the comment
+                hasComment_ = true;
             }
             pop(1);
         }
@@ -330,8 +331,8 @@ void JavaScriptTokenizer::multiLineComment() {
 }
 
 void JavaScriptTokenizer::tokenize() {
-    emptyLine_ = true;
-    commentLine_ = true;
+    hasComment_ = false;
+    hasStuff_ = false;
     bool expectRegExp = true;
     size_t start = 1;
     while (not eof()) {
@@ -541,6 +542,11 @@ void JavaScriptTokenizer::tokenize() {
                 continue; // i.e. expect regexp as set above
         }
         expectRegExp = true;
+    }
+    // if last line is emp
+    if (hasStuff_ or hasComment_) {
+        newline();
+        --tf().lines;
     }
     // increase error counter if there were JS error files
     if (tf().errors > 0)

@@ -166,12 +166,6 @@ public:
     Hash fileHash;
     Hash tokensHash;
 
-    // Information about the clone group, if the file belongs to one, or -1
-    int groupId = -1;
-
-    // True if the file has unique file hash
-    bool fileHashUnique = false;
-
 private:
 
     static std::atomic_uint idCounter_;
@@ -286,7 +280,7 @@ public:
     MergerStats(TokenizerKind kind, TokenInfo const * info):
         tokenizer(kind),
         kind(Kind::TokenInfo),
-        tokenInfo(tokenInfo) {
+        tokenInfo(info) {
     }
 };
 
