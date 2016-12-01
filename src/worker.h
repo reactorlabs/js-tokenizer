@@ -8,6 +8,7 @@
 #include <string>
 #include <cassert>
 #include <iostream>
+#include <fstream>
 
 #include "helpers.h"
 
@@ -46,21 +47,32 @@ public:
         out_.unlock();
     }
 
+    static void Print(std::string const & what, bool logToo = true) {
+        std::lock_guard<std::mutex> g(out_);
+        std::cout << what;
+        if (logToo and logfile_.good())
+            logfile_ << what;
+        std::cout.flush();
+    }
+
     static void Log(std::string const & what) {
-        // logs are silent for now
-/*        std::lock_guard<std::mutex> g(out_);
-        std::cerr << what;
-        if (current_ != nullptr)
-            std::cerr << " (" << current_->name_ << ")";
-        std::cerr << std::endl; */
+        std::lock_guard<std::mutex> g(out_);
+        if (logfile_.good()) {
+            logfile_ << "LOG: " << what;
+            if (current_ != nullptr)
+                logfile_ << " (" << current_->name_ << ")";
+            logfile_ << std::endl;
+        }
     }
 
     static void Error(std::string const & what) {
         std::lock_guard<std::mutex> g(out_);
-        std::cerr << what;
-        if (current_ != nullptr)
-            std::cerr << " (" << current_->name_ << ")";
-        std::cerr << std::endl;
+        if (logfile_.good()) {
+            logfile_ << "ERROR: " << what;
+            if (current_ != nullptr)
+                logfile_ << " (" << current_->name_ << ")";
+            logfile_ << std::endl;
+        }
     }
 
     static void Stall() {
@@ -91,6 +103,12 @@ public:
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
+    static void InitializeLog(std::string const & filename) {
+        logfile_.open(filename);
+        if (not logfile_.good())
+            throw STR("Unable to open " << filename << " for logging.");
+    }
+
 protected:
     Thread(std::string const & name, unsigned index):
         name_(name),
@@ -98,6 +116,14 @@ protected:
     }
 
 private:
+
+    void output(std::string const & what, bool consoleToo = true) {
+        if (consoleToo)
+            std::cout << what;
+        if (logfile_.good())
+            logfile_ << what;
+    }
+
     template<typename JOB>
     friend class Worker;
 
@@ -113,6 +139,8 @@ private:
     static thread_local Thread * current_;
 
     static std::mutex out_;
+
+    static std::ofstream logfile_;
 };
 
 
@@ -146,6 +174,10 @@ public:
 
     static unsigned JobsDone() {
         return jobsDone_;
+    }
+
+    static unsigned Errors() {
+        return errors_;
     }
 
     void operator () () {

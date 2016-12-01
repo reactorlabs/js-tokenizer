@@ -20,6 +20,7 @@ std::string const DBWriter::TableTokensText = "tokens_text";
 std::string const DBWriter::TableTokens = "tokens";
 std::string const DBWriter::TableTokenHashes = "token_hashes";
 std::string const DBWriter::TableCloneGroupHashes = "clone_group_hashes";
+std::string const DBWriter::TableSummary = "summary";
 
 
 std::string DBWriter::db_;

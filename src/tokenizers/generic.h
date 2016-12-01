@@ -116,6 +116,10 @@ public:
         tf->tokenizer = TokenizerKind::Generic;
     }
 
+    static unsigned ErrorFiles() {
+        return errorFiles_;
+    }
+
     void tokenize() override {
         hasComment_ = false;
         hasToken_ = false;
@@ -205,6 +209,9 @@ public:
             newline();
             --tf().lines;
         }
+        // increase error counter if there were JS error files
+        if (tf().errors > 0)
+            ++errorFiles_;
     }
 
 private:
@@ -225,4 +232,8 @@ private:
 private:
     bool hasComment_;
     bool hasToken_;
+
+    static std::atomic_uint errorFiles_;
+
+
 };

@@ -194,7 +194,7 @@ void JavaScriptTokenizer::templateLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Thread::Log("Unterminated template literal");
+        //Thread::Log("Unterminated template literal");
         ++tf().errors;
     }
     addToken(start);
@@ -217,7 +217,7 @@ void JavaScriptTokenizer::stringLiteral() {
                 break;
         }
         if (top() == '\n') {
-            Thread::Log("Multiple lines in string literal");
+            //Thread::Log("Multiple lines in string literal");
             ++tf().errors;
             addToken(start);
             return;
@@ -227,7 +227,7 @@ void JavaScriptTokenizer::stringLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Thread::Log("Unterminated string literal");
+        //Thread::Log("Unterminated string literal");
         ++tf().errors;
     }
     addToken(start);
@@ -242,7 +242,7 @@ void JavaScriptTokenizer::regularExpressionLiteral() {
             pop(1);
             while (top() != ']') {
                 if (eof()) {
-                    Thread::Log("Missing character set end in regular expression, unterminated regular expression");
+                    //Thread::Log("Missing character set end in regular expression, unterminated regular expression");
                     ++tf().errors;
                     addToken(start);
                     return;
@@ -253,7 +253,7 @@ void JavaScriptTokenizer::regularExpressionLiteral() {
         }
         if (top() == '\\') { // any escape will do
             if (eof()) {
-                Thread::Log("Missing escape in regular expression, unterminated regular expression");
+                //Thread::Log("Missing escape in regular expression, unterminated regular expression");
                 ++tf().errors;
                 addToken(start);
                 return;
@@ -261,7 +261,7 @@ void JavaScriptTokenizer::regularExpressionLiteral() {
             pop(1);
         }
         if (top() == '\n') {
-            Thread::Log("Multiple lines in regular expression literal");
+            //Thread::Log("Multiple lines in regular expression literal");
             ++tf().errors;
             addToken(start);
             return;
@@ -272,7 +272,7 @@ void JavaScriptTokenizer::regularExpressionLiteral() {
     if (not eof()) {
         pop(1); // delimiter
     } else {
-        Thread::Log("Unterminated regular expression literal");
+        //Thread::Log("Unterminated regular expression literal");
         ++tf().errors;
     }
     // now parse the flags, as if identifier
@@ -287,8 +287,9 @@ bool JavaScriptTokenizer::identifierOrKeyword() {
     while (isIdentifier(top()))
         pop(1);
     if (pos() == start) {
-        Thread::Log("Unknown character");
+        //Thread::Log(STR("Unknown character " << (int) top()));
         ++tf().errors;
+        pop(1);
         return false;
     } else {
         std::string s = substr(start, pos() - start);
@@ -327,7 +328,7 @@ void JavaScriptTokenizer::multiLineComment() {
         }
     }
     if (eof()) {
-        Thread::Log("Unterminated multi-line comment");
+        //Thread::Log("Unterminated multi-line comment");
         ++tf().errors;
     }
     addComment(start);
@@ -340,7 +341,7 @@ void JavaScriptTokenizer::tokenize() {
     size_t start = 1;
     while (not eof()) {
         if (start == pos()) {
-            Thread::Log(STR("Unknown character " << top()));
+            //Thread::Log(STR("Unknown character " << (int)(top())));
             ++tf().errors;
             pop(1);
             addToken(substr(start, pos() - start));

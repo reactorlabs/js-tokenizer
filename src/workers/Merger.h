@@ -94,6 +94,12 @@ public:
         return contexts_[static_cast<unsigned>(kind)]->uniqueFileHashes.size();
     }
 
+    static unsigned UniqueTokenHashes(TokenizerKind kind) {
+        return contexts_[static_cast<unsigned>(kind)]->uniqueTokenHashes;
+    }
+
+
+
     static void AddUniqueFileHash(TokenizerKind kind, Hash hash) {
         contexts_[static_cast<unsigned>(kind)]->uniqueFileHashes.insert(hash);
     }
@@ -151,6 +157,8 @@ private:
         std::mutex mCloneGroups;
         std::mutex mTokenInfo;
         std::mutex mFileHash;
+        // num of files with unique token hashes (i.e. those that would go to sourcererCC)
+        std::atomic_uint uniqueTokenHashes;
 
         std::string tableFiles;
         std::string tableFilesExtra;
@@ -218,11 +226,21 @@ private:
                 isNew = ti.update(i.first, i.second);
             }
             // check if the token is new
-            if (isNew)
-                b.append(STR(
-                     id << "," <<
-                     i.first.size() << "," <<
-                     escape(i.first)));
+            if (isNew) {
+                // if the token is too large, i.e. more than 10kb show only first and last 1k characters
+                if (i.first.size() > 10 * 1024) {
+                    b.append(STR(
+                         id << "," <<
+                         i.first.size() << "," <<
+                         escape(STR(i.first.substr(0, 1000) << "......" << i.first.substr(i.first.size() - 1000)))));
+
+                } else {
+                    b.append(STR(
+                         id << "," <<
+                         i.first.size() << "," <<
+                         escape(i.first)));
+                }
+            }
             // create a record for the translated token and its uses
             translatedTokens[STR(std::hex << id)] = i.second;
         }
@@ -257,12 +275,16 @@ private:
         translateTokensToIds(c);
         // get the group id and output a clone pair if not -1
         int groupId = getCloneGroup(c);
-        if (groupId != -1) {
+        if (groupId == -1) {
+            // pass the file to the writer so that sourcerer output is written
+            Writer::Schedule(WriterJob(job_));
+            // increase number of unique token hashes
+            ++c.uniqueTokenHashes;
+        } else {
+            // emit the clone pair
             buffers_[c.tableClonePairs].append(STR(
                 job_->file->id << "," <<
                 groupId));
-            // also pass the file to the writer so that sourcerer output is written
-            Writer::Schedule(WriterJob(job_));
         }
     }
 

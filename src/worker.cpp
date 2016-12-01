@@ -28,3 +28,4 @@ std::ostream & operator << (std::ostream & s, Thread::Stats const & stats) {
 thread_local Thread * Thread::current_;
 
 std::mutex Thread::out_;
+std::ofstream Thread::logfile_;

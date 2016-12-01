@@ -57,6 +57,18 @@ private:
         return (data.size() >= 4 and data[0] == 'P' and data[1] =='K' and data[2] == '\003' and data[3] == '\004');
     }
 
+    bool isBinary(std::string const & data) {
+        return (data.size() >= 15) and
+                data[0] == 0 and
+                data[1] == 5 and
+                data[2] == 22 and
+                data[3] == 7 and
+                data[4] == 0 and
+                data[5] == 2 and
+                data[6] == 0 and
+                data[7] == 0; // then we have Mac OS X
+    }
+
     void encodeUTF8(unsigned codepoint, std::string & into) {
         if (codepoint < 0x80) {
             into += static_cast<char>(codepoint);
@@ -80,8 +92,7 @@ private:
             into += static_cast<char>(0x80 + (codepoint & 0x3f));
         } else {
             if (codepoint >= 0x80000000) {
-                Error(STR("Unknown unicode character " << codepoint));
-                ++errors_;
+                throw (STR("Unknown unicode character " << codepoint << " in file "));
             }
             into += static_cast<char>(0xfc + (codepoint >> 30));
             into += static_cast<char>(0x80 + ((codepoint >> 24) & 0x3f));
@@ -99,11 +110,11 @@ private:
         result.reserve(source.size());
         size_t i = 2, e = source.size();
         while (i < e) {
-            unsigned cp = ((unsigned)source[i] << 8) + (unsigned)source[i+1];
+            unsigned cp = ((unsigned char)source[i] << 8) + (unsigned char)source[i+1];
             i += 2;
             // this might be 2x codepoint
-            if (cp >= 0xd800) {
-                unsigned cp2 = ((unsigned)source[i] << 8) + (unsigned)source[i+1];
+            if (cp >= 0xd800 and cp < 0xe000) {
+                unsigned cp2 = ((unsigned char)source[i] << 8) + (unsigned char)source[i+1];
                 if (cp2 >= 0xdc00) {
                     i += 2;
                     cp = 0x10000 + ((cp = 0xd800) << 10) + (cp2 - 0xdc00);
@@ -122,11 +133,11 @@ private:
         result.reserve(source.size());
         size_t i = 2, e = source.size();
         while (i < e) {
-            unsigned cp = ((unsigned)source[i + 1] << 8) + (unsigned)source[i];
+            unsigned cp = ((unsigned char)source[i + 1] << 8) + (unsigned char)source[i];
             i += 2;
             // this might be 2x codepoint
-            if (cp >= 0xd800) {
-                unsigned cp2 = ((unsigned)source[i + 1] << 8) + (unsigned)source[i];
+            if (cp >= 0xd800 and cp < 0xe000) {
+                unsigned cp2 = ((unsigned char)source[i + 1] << 8) + (unsigned char)source[i];
                 if (cp2 >= 0xdc00) {
                     i += 2;
                     cp = 0x10000 + ((cp = 0xd800) << 10) + (cp2 - 0xdc00);
@@ -164,8 +175,13 @@ private:
             } else if (date == 0) { // read timestamp
                 date = std::atoi(tmp.c_str());
             } else { // all other lines are actual files
-                if (isLanguageFile(tmp))
-                    tokenize(tmp, date);
+                if (isLanguageFile(tmp)) {
+                    try {
+                        tokenize(tmp, date);
+                    } catch (std::string const & e) {
+                        throw STR(e << " in file " << tmp);
+                    }
+                }
             }
         }
     }
@@ -180,28 +196,33 @@ private:
     }
 
     template<typename T>
-    void tokenize(int id, std::string const & relPath, int cdate, std::string & file, unsigned length, Hash fileHash) {
+    bool tokenize(int id, std::string const & relPath, int cdate, std::string & file, unsigned length, Hash fileHash) {
         // create the tokenized file
         std::shared_ptr<TokenizedFile> tf(new TokenizedFile(id, job_, relPath, cdate));
         // create the tokenizer and tokenize the file
         T tokenizer(file, tf);
         tokenizer.tokenize();
-        std::shared_ptr<TokensMap> tm = tokenizer.tokensMap();
-        // fill in additional details
-        tf->tokenizer = T::kind;
-        tf->bytes = length;
-        tf->fileHash = fileHash;
-        tf->tokensHash = hash(*tm);
-        tf->uniqueTokens = tm->tokens.size();
-        // now schedule the merger for the tokens map, which has pointer to the file as well
-        Merger::Schedule(MergerJob(tm));
+        if (tf->errors == 0) {
+            std::shared_ptr<TokensMap> tm = tokenizer.tokensMap();
+            // fill in additional details
+            tf->tokenizer = T::kind;
+            tf->bytes = length;
+            tf->fileHash = fileHash;
+            tf->tokensHash = hash(*tm);
+            tf->uniqueTokens = tm->tokens.size();
+            // now schedule the merger for the tokens map, which has pointer to the file as well
+            Merger::Schedule(MergerJob(tm));
+            return true;
+        } else {
+            return false;
+        }
     }
 
     void tokenize(std::string const & relPath, int cdate) {
 
         std::string path = STR(job_->path << "/" << relPath);
         if (not isFile(path)) {
-            Log(STR("Skipping " << path << " as it is not a file"));
+            //Log(STR("Skipping " << path << " as it is not a file"));
             return;
         }
         std::ifstream s(path, std::ios::in | std::ios::binary);
@@ -219,6 +240,9 @@ private:
             if (isArchive(data)) {
                 Log(STR(path << " seems to be archive"));
                 ++archives_;
+            } else if (isBinary(data)) {
+                Log(STR(path << " seems to be binary"));
+                ++binary_;
             } else {
                 unsigned length = data.size();
                 Hash fileHash(data);
@@ -227,10 +251,11 @@ private:
                 // get new ID for the file
                 int id = TokenizedFile::GetNewId();
                 // valid file, let's tokenize
-                if (tokenizers_.find(TokenizerKind::Generic) != tokenizers_.end())
-                    tokenize<GenericTokenizer>(id, relPath, cdate, data, length, fileHash);
+                bool isValid = true;
                 if (tokenizers_.find(TokenizerKind::JavaScript) != tokenizers_.end())
-                    tokenize<JavaScriptTokenizer>(id, relPath, cdate, data, length, fileHash);
+                    isValid = tokenize<JavaScriptTokenizer>(id, relPath, cdate, data, length, fileHash);
+                if (isValid and (tokenizers_.find(TokenizerKind::Generic) != tokenizers_.end()))
+                    tokenize<GenericTokenizer>(id, relPath, cdate, data, length, fileHash);
                 // update counters
                 ++totalFiles_;
                 totalBytes_ += length;
@@ -239,6 +264,7 @@ private:
     }
 
     static std::atomic_uint archives_;
+    static std::atomic_uint binary_;
     static std::atomic_uint utf16be_;
     static std::atomic_uint utf16le_;
     static std::atomic_uint totalFiles_;

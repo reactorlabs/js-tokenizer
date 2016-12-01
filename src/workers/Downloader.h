@@ -56,9 +56,11 @@ private:
     virtual void process() {
         job_->path = STR(downloadDir_ << "/" << job_->id);
         // TODO THIS IS SUPER STUPID  -- DELETE ME
-
-        if (not isDirectory(job_->path))
-            throw (STR("Unable to clone project"));
+        /*
+        if (not isDirectory(job_->path)) {
+            //Log("Unable to clone project");
+            return;
+        }
 
         // get the commit number
         job_->commit = exec("git rev-parse HEAD", job_->path);
@@ -77,7 +79,7 @@ private:
             escape(job_->commit)));
 
         return;
-
+        */
         // NORMAL CODE GOES ON HERE
 
         // if the directory exists, delete it first
@@ -85,9 +87,12 @@ private:
             job_->deleteFromDisk();
 
         // download the project using git
-        std::string out = exec(STR("git clone " << job_->cloneUrl() << " " << job_->id), downloadDir_);
-        if (out.find("fatal:") != std::string::npos)
-            throw (STR("Unable to clone project"));
+        std::string out = exec(STR("GIT_TERMINAL_PROMPT=0 git clone " << job_->cloneUrl() << " " << job_->id), downloadDir_);
+        if (out.find("fatal:") != std::string::npos) {
+            //Log("Unable to clone project");
+            ++errors_;
+            return;
+        }
 
         // make git create list of all files and their create dates
         exec(STR("git log --format=\"format:%at\" --name-only --diff-filter=A > cdate.js.tokenizer.txt"), job_->path);
@@ -96,7 +101,10 @@ private:
 
         // get the commit number
         job_->commit = exec("git rev-parse HEAD", job_->path);
-
+        if (job_->commit.substr(0, 6) == "fatal:")
+            job_->commit = "0000000000000000000000000000000000000000";
+        else
+            job_->commit = job_->commit.substr(0,40); // get rid of the trailing \n
         // and of course, pass it to the tokenizer
         Tokenizer::Schedule(TokenizerJob(job_));
 

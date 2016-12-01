@@ -61,6 +61,16 @@ public:
         while (row = mysql_fetch_row(result))
             f(numFields, row);
     }
+
+    void reconnect() {
+        mysql_close(c_);
+        c_ = mysql_init(nullptr);
+        if (c_ == nullptr)
+            throw STR("Unable to create sql connection");
+        if (mysql_real_connect(c_, server_.c_str(), user_.c_str(), pass_.c_str(), nullptr, 0, nullptr, 0) == nullptr)
+            throw STR("Unable to connect to sql server " << server_ << " using given credentials: " << mysql_error(c_));
+    }
+
 private:
     MYSQL * c_;
 
@@ -117,115 +127,28 @@ public:
     static std::string const TableTokens;
     static std::string const TableTokenHashes;
     static std::string const TableCloneGroupHashes;
-
-
-
-    static void ResetDatabase() {
-        DBWriter db(123456);
-        db.deleteTables();
-        db.createTables();
-
-    }
-
+    static std::string const TableSummary;
 
 private:
 
-    void deleteTables() {
-        query(STR("DROP TABLE IF EXISTS projects"));
-        query(STR("DROP TABLE IF EXISTS projects_extra"));
-        std::string p = prefix(TokenizerKind::Generic);
-        query(STR("DROP TABLE IF EXISTS " << p << "files"));
-        query(STR("DROP TABLE IF EXISTS " << p << "files_extra"));
-        query(STR("DROP TABLE IF EXISTS " << p << "stats"));
-        query(STR("DROP TABLE IF EXISTS " << p << "clone_pairs"));
-        query(STR("DROP TABLE IF EXISTS " << p << "clone_groups"));
-        query(STR("DROP TABLE IF EXISTS " << p << "token_text"));
-        query(STR("DROP TABLE IF EXISTS " << p << "tokens"));
-        p = prefix(TokenizerKind::JavaScript);
-        query(STR("DROP TABLE IF EXISTS " << p << "files"));
-        query(STR("DROP TABLE IF EXISTS " << p << "files_extra"));
-        query(STR("DROP TABLE IF EXISTS " << p << "stats"));
-        query(STR("DROP TABLE IF EXISTS " << p << "clone_pairs"));
-        query(STR("DROP TABLE IF EXISTS " << p << "clone_groups"));
-        query(STR("DROP TABLE IF EXISTS " << p << "token_text"));
-        query(STR("DROP TABLE IF EXISTS " << p << "tokens"));
-    }
-
-    void createTables() {
-        // table for basic project information, compatible with sourcerer CC
-        query(STR("CREATE TABLE IF NOT EXISTS projects ("
-            "projectId INT(6) NOT NULL,"
-            "projectPath VARCHAR(4000) NULL,"
-            "projectUrl VARCHAR(4000) NOT NULL,"
-            "PRIMARY KEY (projectId),"
-            "UNIQUE INDEX (projectId))"));
-        // extra information about projects
-        query(STR("CREATE TABLE IF NOT EXISTS projects_extra ("
-            "projectId INT NOT NULL,"
-            "createdAt INT UNSIGNED NOT NULL,"
-            "PRIMARY KEY (projectId),"
-            "UNIQUE INDEX (projectId))"));
-        createTables(prefix(TokenizerKind::Generic));
-        createTables(prefix(TokenizerKind::JavaScript));
-    }
-
-    void createTables(std::string const & p) {
-        query(STR("CREATE TABLE IF NOT EXISTS " << p << "files ("
-            "fileId BIGINT(6) UNSIGNED NOT NULL,"
-            "projectId INT(6) UNSIGNED NOT NULL,"
-            "relativeUrl VARCHAR(4000) NOT NULL,"
-            "fileHash CHAR(32) NOT NULL,"
-            "PRIMARY KEY (fileId),"
-            "UNIQUE INDEX (fileId),"
-            "INDEX (projectId),"
-            "INDEX (fileHash))"));
-        // extra information about files
-        query(STR("CREATE TABLE IF NOT EXISTS " << p << "files_extra ("
-            "fileId INT NOT NULL,"
-            "createdAt INT UNSIGNED NOT NULL,"
-            "PRIMARY KEY (fileId),"
-            "UNIQUE INDEX (fileId))"));
-        // statistics for unique files (based on *file* hash)
-        query(STR("CREATE TABLE IF NOT EXISTS " << p << "stats ("
-            "fileHash CHAR(32) NOT NULL,"
-            "fileBytes INT(6) UNSIGNED NOT NULL,"
-            "fileLines INT(6) UNSIGNED NOT NULL,"
-            "fileLOC INT(6) UNSIGNED NOT NULL,"
-            "fileSLOC INT(6) UNSIGNED NOT NULL,"
-            "totalTokens INT(6) UNSIGNED NOT NULL,"
-            "uniqueTokens INT(6) UNSIGNED NOT NULL,"
-            "tokenHash CHAR(32) NOT NULL,"
-            "PRIMARY KEY (fileHash),"
-            "UNIQUE INDEX (fileHash),"
-            "INDEX (tokenHash))"));
-        // tokenizer clone pairs (no counterpart in sourcerer CC)
-        query(STR("CREATE TABLE IF NOT EXISTS " << p << "clone_pairs ("
-            "fileId INT NOT NULL,"
-            "groupId INT NOT NULL,"
-            "PRIMARY KEY(fileId))"));
-        // tokenizer clone groups (no counterpart in sourcerer CC)
-        query(STR("CREATE TABLE IF NOT EXISTS " << p << "clone_groups ("
-            "groupId INT NOT NULL,"
-            "oldestId INT NOT NULL,"
-            "PRIMARY KEY(groupId))"));
-        // tokens and their freqencies (this is dumped once at the end of the run)
-        query(STR("CREATE TABLE IF NOT EXISTS " << p << "tokens ("
-            "id INT NOT NULL,"
-            "uses INT NOT NULL,"
-            "PRIMARY KEY(id))"));
-        // unique tokens, new tokens are added each time they are found
-        query(STR("CREATE TABLE IF NOT EXISTS " << p << "token_text ("
-            "id INT NOT NULL,"
-            "size INT NOT NULL,"
-            "text LONGTEXT NOT NULL,"
-            "PRIMARY KEY(id))"));
-    }
 
 
     void process() override {
-        // if it is project, use default context as projects table is identical for all tokenizers
-        query(job_.buffer);
+        if (queries_++ == 10) {
+            reconnect();
+            query(STR("USE " << db_));
+        }
+        try {
+            // if it is project, use default context as projects table is identical for all tokenizers
+            query(job_.buffer);
+        } catch (std::string const & e) {
+            reconnect();
+            query(STR("USE " << db_));
+            throw e;
+        }
     }
+
+    unsigned queries_ = 0;
 
 
     static std::string db_;

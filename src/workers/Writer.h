@@ -31,22 +31,23 @@ public:
     }
     Writer(unsigned index):
         Worker<WriterJob>(Name(), index) {
+        // make sure the output directory exists
+        createDirectory(outputDir_);
 
         // initialize the contexts (i.e. create the output files)
         for (TokenizerKind k : tokenizers_) {
             unsigned idx = static_cast<unsigned>(k);
             if (contexts_.size() < idx + 1)
                 contexts_.resize(idx + 1);
-            std::string filename = STR(outputDir_ << "/" << prefix(k) << "tokens-" << index << ".txt");
+            std::string filename = STR(outputDir_ << "/" << prefix(k) << "tokens-" << index << "-" << ClonedProject::StrideIndex() << ".txt");
             contexts_[idx].f.open(filename);
             if (not contexts_[idx].f.good())
                 throw STR("Unable to open output file " << filename);
         }
     }
 
-    static void SetOutputDir(std::string const & value) {
-        outputDir_ = value;
-        createDirectory(value);
+    static std::string & OutputDir() {
+        return outputDir_;
     }
 
     static void AddTokenizer(TokenizerKind k) {

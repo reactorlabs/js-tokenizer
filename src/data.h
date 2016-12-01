@@ -83,6 +83,18 @@ inline std::string prefix(TokenizerKind k) {
     }
 }
 
+inline std::ostream & operator << (std::ostream & s, TokenizerKind t) {
+    switch (t) {
+        case TokenizerKind::Generic:
+            s << "Generic";
+            break;
+        case TokenizerKind::JavaScript:
+            s << "JavaScript";
+            break;
+    }
+    return s;
+}
+
 /** Contains the information about a single cloned project.
  */
 
