@@ -370,10 +370,9 @@ public:
         if (target_ == Target::File) {
             buffer_ += STR(what << std::endl);
         } else {
-            bool empty = buffer_.empty();
-            buffer_ += STR("(" << what << ")");
-            if (empty)
+            if (not buffer_.empty())
                 buffer_ += ",";
+            buffer_ += STR("(" << what << ")");
         }
         if (buffer_.size() > BUFFER_LIMIT)
             guardedFlush();

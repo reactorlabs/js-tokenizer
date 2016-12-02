@@ -46,7 +46,7 @@ public:
             if (contexts_.size() < idx + 1)
                 contexts_.resize(idx + 1);
             std::string outputDir = STR(outputDir_ << "/" << prefix(k));
-            createDirectoru(outputDir);
+            createDirectory(outputDir);
             contexts_[idx].initialize(outputDir);
         }
     }
