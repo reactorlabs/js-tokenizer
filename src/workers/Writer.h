@@ -62,8 +62,10 @@ public:
 private:
     static void openFile(std::ofstream & s, std::string const filename) {
         s.open(filename);
-        if (not s.good())
+        if (not s.good()) {
+            std::cout << " Houston, we have a problem" << std::endl;
             throw STR("Unable to open " << filename);
+        }
     }
 
     struct Context {
