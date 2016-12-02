@@ -46,6 +46,7 @@ public:
             if (contexts_.size() < idx + 1)
                 contexts_.resize(idx + 1);
             std::string outputDir = STR(outputDir_ << "/" << prefix(k));
+            createDirectoru(outputDir);
             contexts_[idx].initialize(outputDir);
         }
     }
@@ -63,7 +64,7 @@ private:
     static void openFile(std::ofstream & s, std::string const filename) {
         s.open(filename);
         if (not s.good()) {
-            std::cout << " Houston, we have a problem" << std::endl;
+            std::cout << " Houston, we have a problem " << filename << std::endl;
             throw STR("Unable to open " << filename);
         }
     }
