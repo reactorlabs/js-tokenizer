@@ -122,6 +122,6 @@ private:
 
     static std::string downloadDir_;
 
-    static DBBuffer projects_;
-    static DBBuffer projectsExtra_;
+    static Buffer projects_;
+    static Buffer projectsExtra_;
 };

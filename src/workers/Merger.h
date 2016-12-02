@@ -116,10 +116,13 @@ public:
      */
     static void FlushBuffers() {
         for (auto & i : buffers_)
-            i.second.flush();
+            i.second->flush();
     }
 
     static void FlushStatistics() {
+/**
+
+        assert(false and "Not implemented");
         for (unsigned i = 0; i < contexts_.size(); ++i) {
             Context * c = contexts_[i];
             if (c == nullptr)
@@ -146,11 +149,12 @@ public:
                     escape(ii.first)));
             }
         }
-        FlushBuffers();
+        FlushBuffers(); **/
     }
 
 private:
     struct Context {
+        TokenizerKind tokenizer;
         std::unordered_map<Hash, CloneGroup> cloneGroups;
         std::unordered_map<Hash, TokenInfo> tokenInfo;
         std::unordered_set<Hash> uniqueFileHashes;
@@ -160,36 +164,20 @@ private:
         // num of files with unique token hashes (i.e. those that would go to sourcererCC)
         std::atomic_uint uniqueTokenHashes;
 
-        std::string tableFiles;
-        std::string tableFilesExtra;
-        std::string tableStats;
-        std::string tableClonePairs;
-        std::string tableCloneGroups;
-        std::string tableTokensText;
-        std::string tableTokens;
-        std::string tableTokenHashes;
-        std::string tableCloneGroupHashes;
 
-        Context(TokenizerKind k) {
-            std::string p = prefix(k);
-            tableFiles = p + DBWriter::TableFiles;
-            tableFilesExtra = p + DBWriter::TableFilesExtra;
-            tableStats = p + DBWriter::TableStats;
-            tableClonePairs = STR(p << DBWriter::TableClonePairs << "_" << ClonedProject::StrideIndex());
-            tableCloneGroups = STR(p << DBWriter::TableCloneGroups << "_" << ClonedProject::StrideIndex());
-            tableTokensText = STR(p << DBWriter::TableTokensText << "_" << ClonedProject::StrideIndex());
-            tableTokens = STR(p << DBWriter::TableTokens << "_" << ClonedProject::StrideIndex());
-            tableTokenHashes = STR(p << DBWriter::TableTokenHashes << "_" << ClonedProject::StrideIndex());
-            tableCloneGroupHashes = STR(p << DBWriter::TableCloneGroupHashes << "_" << ClonedProject::StrideIndex());
-            Merger::buffers_[tableFiles].setTableName(tableFiles);
-            Merger::buffers_[tableFilesExtra].setTableName(tableFilesExtra);
-            Merger::buffers_[tableStats].setTableName(tableStats);
-            Merger::buffers_[tableClonePairs].setTableName(tableClonePairs);
-            Merger::buffers_[tableCloneGroups].setTableName(tableCloneGroups);
-            Merger::buffers_[tableTokensText].setTableName(tableTokensText);
-            Merger::buffers_[tableTokens].setTableName(tableTokens);
-            Merger::buffers_[tableTokenHashes].setTableName(tableTokenHashes);
-            Merger::buffers_[tableCloneGroupHashes].setTableName(tableCloneGroupHashes);
+        Context(TokenizerKind k):
+            tokenizer(k) {
+#define INITIALIZE(kind, target) Merger::buffers_[Buffer::ID(kind, k)] = new Buffer(target, kind, k);
+            INITIALIZE(Buffer::Kind::Projects, Buffer::Target::DB);
+            INITIALIZE(Buffer::Kind::Files, Buffer::Target::DB);
+            INITIALIZE(Buffer::Kind::FilesExtra, Buffer::Target::DB);
+            INITIALIZE(Buffer::Kind::Stats, Buffer::Target::DB);
+            INITIALIZE(Buffer::Kind::ClonePairs, Buffer::Target::File);
+            INITIALIZE(Buffer::Kind::CloneGroups, Buffer::Target::File);
+            INITIALIZE(Buffer::Kind::Tokens, Buffer::Target::File);
+            INITIALIZE(Buffer::Kind::TokensText, Buffer::Target::File);
+            INITIALIZE(Buffer::Kind::TokenizedFile, Buffer::Target::File);
+#undef INITIALIZE
         }
     };
 
@@ -212,7 +200,7 @@ private:
       Schedules any newly created tokens to be written to the database at the end.
      */
     void translateTokensToIds(Context & context) {
-        DBBuffer & b = buffers_[context.tableTokensText];
+        Buffer * b = buffers_[Buffer::ID(Buffer::Kind::TokensText, context.tokenizer)];
         std::unordered_map<std::string, unsigned> translatedTokens;
         for (auto & i : job_->tokens) {
             // create a hash of the token
@@ -229,15 +217,17 @@ private:
             if (isNew) {
                 // if the token is too large, i.e. more than 10kb show only first and last 1k characters
                 if (i.first.size() > 10 * 1024) {
-                    b.append(STR(
+                    b->append(STR(
                          id << "," <<
                          i.first.size() << "," <<
+                         h << "," <<
                          escape(STR(i.first.substr(0, 1000) << "......" << i.first.substr(i.first.size() - 1000)))));
 
                 } else {
-                    b.append(STR(
+                    b->append(STR(
                          id << "," <<
                          i.first.size() << "," <<
+                         h << "," <<
                          escape(i.first)));
                 }
             }
@@ -250,18 +240,18 @@ private:
 
     void process(Context & c) {
         // first store the file
-        buffers_[c.tableFiles].append(STR(
+        buffers_[Buffer::ID(Buffer::Kind::Files, c.tokenizer)]->append(STR(
             job_->file->id << "," <<
             job_->file->project->id << "," <<
             escape(job_->file->relPath) << "," <<
             escape(job_->file->fileHash)));
         // and its extra information
-        buffers_[c.tableFilesExtra].append(STR(
+        buffers_[Buffer::ID(Buffer::Kind::FilesExtra, c.tokenizer)]->append(STR(
             job_->file->id << "," <<
             job_->file->createdAt));
         // if the file has unique hash output also its statistics
         if (hasUniqueFileHash(* job_->file, c)) {
-            buffers_[c.tableStats].append(STR(
+            buffers_[Buffer::ID(Buffer::Kind::Stats, c.tokenizer)]->append(STR(
                 escape(job_->file->fileHash) << "," <<
                 job_->file->bytes << "," <<
                 job_->file->lines << "," <<
@@ -276,13 +266,25 @@ private:
         // get the group id and output a clone pair if not -1
         int groupId = getCloneGroup(c);
         if (groupId == -1) {
-            // pass the file to the writer so that sourcerer output is written
-            Writer::Schedule(WriterJob(job_));
             // increase number of unique token hashes
             ++c.uniqueTokenHashes;
+            if (not job_->tokens.empty()) {
+                std::stringstream ss;
+                ss << job_->file->project->id << "," <<
+                     job_->file->id << "," <<
+                     job_->file->totalTokens << "," <<
+                     job_->file->uniqueTokens << "," <<
+                     escape(job_->file->tokensHash) << "," <<
+                     "@#@";
+                auto i = job_->tokens.begin(), e = job_->tokens.end();
+                ss << i->first << "@@::@@" << i->second;
+                while (++i != e)
+                    ss << "," << i->first << "@@::@@" << i->second;
+                buffers_[Buffer::ID(Buffer::Kind::TokenizedFile, c.tokenizer)]->append(ss.str());
+            }
         } else {
             // emit the clone pair
-            buffers_[c.tableClonePairs].append(STR(
+            buffers_[Buffer::ID(Buffer::Kind::ClonePairs, c.tokenizer)]->append(STR(
                 job_->file->id << "," <<
                 groupId));
         }
@@ -295,6 +297,6 @@ private:
 
     static std::vector<Context * > contexts_;
 
-    static std::map<std::string, DBBuffer> buffers_;
+    static std::unordered_map<Buffer::ID, Buffer *> buffers_;
 
 };

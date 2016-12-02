@@ -325,5 +325,129 @@ public:
     }
 };
 
+class Buffer {
+public:
+    enum class Target {
+        DB,
+        File
+    };
+    enum class Kind {
+        Projects,
+        ProjectsExtra,
+        Files,
+        FilesExtra,
+        Stats,
+        ClonePairs,
+        CloneGroups,
+        Tokens,
+        TokensText,
+        TokenizedFile,
+        Error
+    };
+
+    struct ID {
+        Kind kind;
+        TokenizerKind tokenizer;
+        ID(Kind kind, TokenizerKind tokenizer):
+            kind(kind),
+            tokenizer(tokenizer) {
+        }
+        bool operator == (ID const & other) const {
+            return kind == other.kind and tokenizer == other.tokenizer;
+        }
+    };
+
+    static const unsigned BUFFER_LIMIT = 1024 * 1024; //1mb
+
+    Buffer(Target target, Kind kind, TokenizerKind tokenizer = TokenizerKind::Generic):
+        target_(target),
+        kind_(kind),
+        tokenizer_(tokenizer) {
+    }
+
+    void append(std::string const & what) {
+        std::lock_guard<std::mutex> g(m_);
+        if (target_ == Target::File) {
+            buffer_ += STR(what << std::endl);
+        } else {
+            bool empty = buffer_.empty();
+            buffer_ += STR("(" << what << ")");
+            if (empty)
+                buffer_ += ",";
+        }
+        if (buffer_.size() > BUFFER_LIMIT)
+            guardedFlush();
+    }
+
+    void flush() {
+        std::lock_guard<std::mutex> g(m_);
+        if (not buffer_.empty())
+            guardedFlush();
+    }
+
+private:
+
+
+    void guardedFlush();
+
+
+
+    Target target_;
+    Kind kind_;
+    TokenizerKind tokenizer_;
+    std::string buffer_;
+    std::mutex m_;
+
+};
+
+inline std::ostream & operator << (std::ostream & s, Buffer::Kind k) {
+    switch (k) {
+        case Buffer::Kind::Projects:
+            s << "Projects";
+            break;
+        case Buffer::Kind::ProjectsExtra:
+            s << "Projects";
+            break;
+        case Buffer::Kind::Files:
+            s << "Files";
+            break;
+        case Buffer::Kind::FilesExtra:
+            s << "FilesExtra";
+            break;
+        case Buffer::Kind::Stats:
+            s << "Stats";
+            break;
+        case Buffer::Kind::ClonePairs:
+            s << "ClonePairs";
+            break;
+        case Buffer::Kind::CloneGroups:
+            s << "CloneGroups";
+            break;
+        case Buffer::Kind::Tokens:
+            s << "Tokens";
+            break;
+        case Buffer::Kind::TokensText:
+            s << "TokensText";
+            break;
+        default:
+            s << "Error";
+            break;
+    }
+
+
+}
+
+namespace std {
+
+    template<>
+    struct hash<::Buffer::ID> {
+
+        std::size_t operator()(::Buffer::ID const & h) const {
+            return (int)h.tokenizer * 100 + (int) h.kind;
+        }
+
+    };
+}
+
 
 

@@ -10,6 +10,18 @@
 
 #include "workers/CSVReader.h"
 
+/** Changes
+
+1) Do not store token lists and tokens in
+2) Insert ignore file stats
+
+
+
+
+
+*/
+
+
 constexpr char CSI = 0x1b;
 
 
@@ -180,27 +192,14 @@ bool stats(std::string & output, std::chrono::high_resolution_clock::time_point 
 
 
 void checkTables(SQLConnection & sql, TokenizerKind t) {
-    std::string p = prefix(t);
-    Thread::Print(STR("    " << p << DBWriter::TableFiles << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableFiles << " ("
-        "fileId BIGINT(6) UNSIGNED NOT NULL,"
-        "projectId INT(6) UNSIGNED NOT NULL,"
-        "relativeUrl VARCHAR(4000) NOT NULL,"
-        "fileHash CHAR(32) NOT NULL,"
-        "PRIMARY KEY (fileId),"
-        "UNIQUE INDEX (fileId),"
-        "INDEX (projectId),"
-        "INDEX (fileHash))"));
-    // extra information about files
-    Thread::Print(STR("    " << p << DBWriter::TableFilesExtra << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableFilesExtra << " ("
-        "fileId INT NOT NULL,"
-        "createdAt INT UNSIGNED NOT NULL,"
-        "PRIMARY KEY (fileId),"
-        "UNIQUE INDEX (fileId))"));
+    std::string tStats = DBWriter::TableName(t, Buffer::Kind::Stats);
+    std::string tClonePairs = DBWriter::TableName(t, Buffer::Kind::ClonePairs);
+    std::string tCloneGroups = DBWriter::TableName(t, Buffer::Kind::CloneGroups);
+    std::string tTokens = DBWriter::TableName(t, Buffer::Kind::Tokens);
+    std::string tTokensText = DBWriter::TableName(t, Buffer::Kind::TokensText);
     // statistics for unique files (based on *file* hash)
-    Thread::Print(STR("    " << p << DBWriter::TableStats << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableStats << " ("
+    Thread::Print(STR("    " << tStats << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tStats << " ("
         "fileHash CHAR(32) NOT NULL,"
         "fileBytes INT(6) UNSIGNED NOT NULL,"
         "fileLines INT(6) UNSIGNED NOT NULL,"
@@ -213,46 +212,34 @@ void checkTables(SQLConnection & sql, TokenizerKind t) {
         "UNIQUE INDEX (fileHash),"
         "INDEX (tokenHash))"));
     // tokenizer clone pairs (no counterpart in sourcerer CC)
-    Thread::Print(STR("    " << p << DBWriter::TableClonePairs << "_" << ClonedProject::StrideIndex()  << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableClonePairs << "_" << ClonedProject::StrideIndex()  << " ("
+    Thread::Print(STR("    " << tClonePairs << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tClonePairs << " ("
         "fileId INT NOT NULL,"
         "groupId INT NOT NULL,"
         "PRIMARY KEY(fileId),"
         "UNIQUE INDEX(fileId))"));
     // tokenizer clone groups (no counterpart in sourcerer CC)
-    Thread::Print(STR("    " << p << DBWriter::TableCloneGroups << "_" << ClonedProject::StrideIndex()  << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableCloneGroups << "_" << ClonedProject::StrideIndex()  << " ("
+    Thread::Print(STR("    " << tCloneGroups << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tCloneGroups << " ("
         "groupId INT NOT NULL,"
+        "hash CHAR(32) NOT NULL,"
         "oldestId INT NOT NULL,"
         "PRIMARY KEY(groupId),"
         "UNIQUE INDEX(groupId))"));
     // tokens and their freqencies (this is dumped once at the end of the run)
-    Thread::Print(STR("    " << p << DBWriter::TableTokens << "_" << ClonedProject::StrideIndex() << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableTokens << "_" << ClonedProject::StrideIndex()  << " ("
+    Thread::Print(STR("    " << tTokens << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tTokens << " ("
         "id INT NOT NULL,"
         "uses INT NOT NULL,"
         "PRIMARY KEY(id),"
         "UNIQUE INDEX(id))"));
     // unique tokens, new tokens are added each time they are found
-    Thread::Print(STR("    " << p << DBWriter::TableTokensText << "_" << ClonedProject::StrideIndex()  << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableTokensText << "_" << ClonedProject::StrideIndex()  <<  " ("
+    Thread::Print(STR("    " << tTokensText << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tTokensText <<  " ("
         "id INT NOT NULL,"
         "size INT NOT NULL,"
+        "hash CHAR(32),"
         "text LONGTEXT NOT NULL,"
-        "PRIMARY KEY(id),"
-        "UNIQUE INDEX(id))"));
-    // token hashes as a shortcut to the state snapshot
-    Thread::Print(STR("    " << p << DBWriter::TableTokenHashes << "_" << ClonedProject::StrideIndex()  << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableTokenHashes << "_" << ClonedProject::StrideIndex()  << " ("
-        "id INT NOT NULL,"
-        "hash CHAR(32) NOT NULL,"
-        "PRIMARY KEY(id),"
-        "UNIQUE INDEX(id))"));
-    // clone group hashes as a shortcut to the state snapshots
-    Thread::Print(STR("    " << p << DBWriter::TableCloneGroupHashes << "_" << ClonedProject::StrideIndex()  << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << p << DBWriter::TableCloneGroupHashes << "_" << ClonedProject::StrideIndex()  << " ("
-        "id INT NOT NULL,"
-        "hash CHAR(32) NOT NULL,"
         "PRIMARY KEY(id),"
         "UNIQUE INDEX(id))"));
 }
@@ -285,28 +272,53 @@ void checkDatabase() {
           "name VARCHAR(100),"
           "value BIGINT NOT NULL,"
           "PRIMARY KEY (name))"));
+    std::string tProjects = DBWriter::TableName(TokenizerKind::Generic, Buffer::Kind::Projects);
+    std::string tProjectsExtra = DBWriter::TableName(TokenizerKind::Generic, Buffer::Kind::ProjectsExtra);
+    std::string tFiles = DBWriter::TableName(TokenizerKind::Generic, Buffer::Kind::Files);
+    std::string tFilesExtra = DBWriter::TableName(TokenizerKind::Generic, Buffer::Kind::FilesExtra);
     // info about projects compatible with sourcererCC
-    Thread::Print(STR("    " << DBWriter::TableProjects << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << DBWriter::TableProjects << " ("
+    Thread::Print(STR("    " << tProjects << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tProjects << " ("
         "projectId INT(6) NOT NULL,"
         "projectPath VARCHAR(4000) NULL,"
         "projectUrl VARCHAR(4000) NOT NULL,"
         "PRIMARY KEY (projectId),"
         "UNIQUE INDEX (projectId))"));
     // extra information about projects (creation date and commit hash downloaded)
-    Thread::Print(STR("    " << DBWriter::TableProjectsExtra << std::endl));
-    sql.query(STR("CREATE TABLE IF NOT EXISTS " << DBWriter::TableProjectsExtra << " ("
+    Thread::Print(STR("    " << tProjectsExtra << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tProjectsExtra << " ("
         "projectId INT NOT NULL,"
         "createdAt INT UNSIGNED NOT NULL,"
         "commit CHAR(40),"
         "PRIMARY KEY (projectId),"
         "UNIQUE INDEX (projectId))"));
+    // files seen
+    Thread::Print(STR("    " << tFiles << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tFiles << " ("
+        "fileId BIGINT(6) UNSIGNED NOT NULL,"
+        "projectId INT(6) UNSIGNED NOT NULL,"
+        "relativeUrl VARCHAR(4000) NOT NULL,"
+        "fileHash CHAR(32) NOT NULL,"
+        "PRIMARY KEY (fileId),"
+        "UNIQUE INDEX (fileId),"
+        "INDEX (projectId),"
+        "INDEX (fileHash))"));
+    // extra information about files
+    Thread::Print(STR("    " << tFilesExtra << std::endl));
+    sql.query(STR("CREATE TABLE IF NOT EXISTS " << tFilesExtra << " ("
+        "fileId INT NOT NULL,"
+        "createdAt INT UNSIGNED NOT NULL,"
+        "PRIMARY KEY (fileId),"
+        "UNIQUE INDEX (fileId))"));
+
+
     // check tables for tokenizers
     checkTables(sql, TokenizerKind::Generic);
     checkTables(sql, TokenizerKind::JavaScript);
 }
 
 void resumeState(SQLConnection & sql, TokenizerKind t) {
+#ifdef HAHA
     Thread::Print(STR("  resuming previous state for tokenizer " << " TODO NAME " << std::endl));
     std::string p = prefix(t);
 
@@ -346,6 +358,7 @@ void resumeState(SQLConnection & sql, TokenizerKind t) {
         Merger::AddTokenInfo(t, Hash::Parse(row[2]), TokenInfo(std::atoi(row[0]), std::atoi(row[1])));
     });
     Thread::Print(STR("      total: " << Merger::NumTokens(t) << std::endl));
+   #endif
 }
 
 /** Resumes the state of the last stride, if any in the database.

@@ -7,6 +7,8 @@
 #include "../data.h"
 #include "../worker.h"
 
+
+
 class RAII {
 public:
     RAII(std::function<void(void)> f):
@@ -111,22 +113,37 @@ public:
         query(STR("USE " << db_));
     }
 
+    static std::string TableName(TokenizerKind tk, Buffer::Kind k) {
+        std::string result = prefix(tk);
+        switch (k) {
+            case Buffer::Kind::Projects:
+                return "projects";
+            case Buffer::Kind::ProjectsExtra:
+                return "projects_extra";
+            case Buffer::Kind::Files:
+                return "files";
+            case Buffer::Kind::FilesExtra:
+                return "files_extra";
+            case Buffer::Kind::Stats:
+                return result + "stats";
+            case Buffer::Kind::ClonePairs:
+                return result + "clone_pairs";
+            case Buffer::Kind::CloneGroups:
+                return result + "clone_groups";
+            case Buffer::Kind::Tokens:
+                return result + "tokens";
+            case Buffer::Kind::TokensText:
+                return result + "tokens_text";
+            default:
+                throw STR("Buffer kind not supported for DB target");
+        }
+    }
+
     static std::string & DatabaseName() {
         return db_;
     }
 
     static std::string const TableStamp;
-    static std::string const TableProjects;
-    static std::string const TableProjectsExtra;
-    static std::string const TableFiles;
-    static std::string const TableFilesExtra;
-    static std::string const TableStats;
-    static std::string const TableClonePairs;
-    static std::string const TableCloneGroups;
-    static std::string const TableTokensText;
-    static std::string const TableTokens;
-    static std::string const TableTokenHashes;
-    static std::string const TableCloneGroupHashes;
     static std::string const TableSummary;
 
 private:
@@ -154,6 +171,9 @@ private:
     static std::string db_;
 
 };
+
+
+
 
 class DBBuffer {
 public:

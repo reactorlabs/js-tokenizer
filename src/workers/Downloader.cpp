@@ -4,6 +4,6 @@
 
 std::string Downloader::downloadDir_;
 
-DBBuffer Downloader::projects_(DBWriter::TableProjects);
-DBBuffer Downloader::projectsExtra_(DBWriter::TableProjectsExtra);
+Buffer Downloader::projects_(Buffer::Target::DB, Buffer::Kind::Projects);
+Buffer Downloader::projectsExtra_(Buffer::Target::DB, Buffer::Kind::ProjectsExtra);
 
