@@ -479,14 +479,15 @@ void setup() {
     addTokenizer(TokenizerKind::JavaScript);
 
 
-    SQLConnection::SetConnection("127.0.0.1", "sourcerer", "js");
+    SQLConnection::SetConnection("127.0.0.1", "peta", "pycus");
 
 
 
     // !!!!!!!!
-    DBWriter::DatabaseName() = "github_all_stride_0";
+    DBWriter::DatabaseName() = "github_all";
     Downloader::SetDownloadDir("/data/sourcerer/github/download_all");
-    Writer::OutputDir() = "/data/sourcerer/github/output_all";
+    Writer::OutputDir() = "/data/sourcerer/github/output_text";
+    createDirectory(Writer::OutputDir());
     ClonedProject::KeepProjects() = false;
 
 
