@@ -1,4 +1,5 @@
 #include "Writer.h"
 
-std::set<TokenizerKind> Writer::tokenizers_;
 std::string Writer::outputDir_;
+std::mutex Writer::m_;
+std::unordered_map<std::string, Writer::OutputFile *> Writer::outputFiles_;

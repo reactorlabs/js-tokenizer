@@ -5,6 +5,7 @@
 #include "../helpers.h"
 
 #include "../worker.h"
+#include "../buffers.h"
 
 #include "DBWriter.h"
 #include "Tokenizer.h"
@@ -47,10 +48,10 @@ public:
         createDirectory(downloadDir_);
     }
 
-    static void FlushBuffers() {
+/*    static void FlushBuffers() {
         projects_.flush();
         projectsExtra_.flush();
-    }
+    } */
 
 private:
     virtual void process() {
@@ -83,11 +84,11 @@ private:
         Tokenizer::Schedule(TokenizerJob(job_));
 
         // pass the project to the DB writer.
-        projects_.append(STR(
+        Buffer::Get(Buffer::Kind::Projects).append(STR(
             job_->id <<
             ",NULL," <<
             escape(job_->url)));
-        projectsExtra_.append(STR(
+        Buffer::Get(Buffer::Kind::ProjectsExtra).append(STR(
             job_->id << "," <<
             job_->createdAt << "," <<
             escape(job_->commit)));
@@ -96,6 +97,6 @@ private:
 
     static std::string downloadDir_;
 
-    static Buffer projects_;
-    static Buffer projectsExtra_;
+//    static Buffer projects_;
+//    static Buffer projectsExtra_;
 };

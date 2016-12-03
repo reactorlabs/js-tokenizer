@@ -113,7 +113,7 @@ public:
         query(STR("USE " << db_));
     }
 
-    static std::string TableName(TokenizerKind tk, Buffer::Kind k) {
+/*    static std::string TableName(TokenizerKind tk, Buffer::Kind k) {
         std::string result = prefix(tk);
         switch (k) {
             case Buffer::Kind::Projects:
@@ -137,14 +137,16 @@ public:
             default:
                 throw STR("Buffer kind not supported for DB target");
         }
-    }
+    } */
 
     static std::string & DatabaseName() {
         return db_;
     }
 
-    static std::string const TableStamp;
+/*    static std::string const TableStamp;
     static std::string const TableSummary;
+    */
+
 
 private:
 

@@ -6,6 +6,7 @@
 #include <thread>
 
 #include "data.h"
+#include "buffers.h"
 #include "worker.h"
 
 #include "workers/CSVReader.h"
@@ -65,7 +66,6 @@ void tokenize(std::string const & filename) {
 void addTokenizer(TokenizerKind k) {
     Tokenizer::AddTokenizer(k);
     Merger::AddTokenizer(k);
-    Writer::AddTokenizer(k);
 }
 
 template<typename T>
@@ -204,6 +204,8 @@ bool stats(std::string & output, std::chrono::high_resolution_clock::time_point 
 
 
 void checkTables(SQLConnection & sql, TokenizerKind t) {
+/*
+
     std::string tStats = DBWriter::TableName(t, Buffer::Kind::Stats);
     std::string tClonePairs = DBWriter::TableName(t, Buffer::Kind::ClonePairs);
     std::string tCloneGroups = DBWriter::TableName(t, Buffer::Kind::CloneGroups);
@@ -253,6 +255,7 @@ void checkTables(SQLConnection & sql, TokenizerKind t) {
         "text LONGTEXT NOT NULL,"
         "PRIMARY KEY(id),"
         "UNIQUE INDEX(id))"));
+*/
 }
 
 
@@ -272,7 +275,7 @@ void checkDatabase() {
     sql.query(STR("CREATE DATABASE IF NOT EXISTS " << DBWriter::DatabaseName()));
     sql.query(STR("USE " << DBWriter::DatabaseName()));
     // create tokenizer agnostic tables
-    Thread::Print(STR("    " << DBWriter::TableStamp << std::endl));
+/*    Thread::Print(STR("    " << DBWriter::TableStamp << std::endl));
     sql.query(STR("CREATE TABLE IF NOT EXISTS " << DBWriter::TableStamp << " ("
         "name VARCHAR(100),"
         "value VARCHAR(1000),"
@@ -322,7 +325,7 @@ void checkDatabase() {
         "PRIMARY KEY (fileId),"
         "UNIQUE INDEX (fileId))"));
 
-
+    */
     // check tables for tokenizers
     checkTables(sql, TokenizerKind::Generic);
     checkTables(sql, TokenizerKind::JavaScript);
@@ -375,7 +378,7 @@ void resumeState(SQLConnection & sql, TokenizerKind t) {
 /** Resumes the state of the last stride, if any in the database.
  */
 void resumeState() {
-    SQLConnection sql;
+/*    SQLConnection sql;
     sql.query(STR("USE " << DBWriter::DatabaseName()));
     sql.query(STR("SELECT value FROM " << DBWriter::TableStamp << " WHERE name = 'last-stride-index'"), [] (unsigned cols, char ** row) {
         lastStride = std::atoi(row[0]);
@@ -385,7 +388,7 @@ void resumeState() {
         resumeState(sql, TokenizerKind::JavaScript);
     } else {
         Thread::Print(STR("  no previous state to resume from" << std::endl));
-    }
+    } */
 }
 
 template<typename T>
@@ -395,7 +398,7 @@ void initializeThreads(unsigned num) {
 }
 
 void stampAndSummary(std::chrono::high_resolution_clock::time_point const & since) {
-    SQLConnection sql;
+/*    SQLConnection sql;
     auto now = std::chrono::high_resolution_clock::now();
     unsigned secondsSince = std::chrono::duration_cast<std::chrono::seconds>(now - since).count();
     sql.query(STR("USE " << DBWriter::DatabaseName()));
@@ -423,7 +426,7 @@ void stampAndSummary(std::chrono::high_resolution_clock::time_point const & sinc
 
 
 
-
+*/
 
 }
 
@@ -451,9 +454,9 @@ void run() {
 
     std::thread t([]() {
         try {
-            Downloader::FlushBuffers();
-            Tokenizer::FlushBuffers();
-            Merger::FlushBuffers();
+//            Downloader::FlushBuffers();
+            //Tokenizer::FlushBuffers();
+            //Merger::FlushBuffers();
             Merger::FlushStatistics();
         } catch (std::string const & e) {
             Thread::Error(e);
@@ -476,6 +479,20 @@ void run() {
 }
 
 void setup() {
+    // set default targets for the various buffers
+    Buffer::TargetType(Buffer::Kind::Stamp) = Buffer::Target::DB;
+    Buffer::TargetType(Buffer::Kind::Summary) = Buffer::Target::DB;
+    Buffer::TargetType(Buffer::Kind::Projects) = Buffer::Target::DB;
+    Buffer::TargetType(Buffer::Kind::ProjectsExtra) = Buffer::Target::DB;
+    Buffer::TargetType(Buffer::Kind::Files) = Buffer::Target::DB;
+    Buffer::TargetType(Buffer::Kind::FilesExtra) = Buffer::Target::DB;
+    Buffer::TargetType(Buffer::Kind::Stats) = Buffer::Target::DB;
+    Buffer::TargetType(Buffer::Kind::ClonePairs) = Buffer::Target::File;
+    Buffer::TargetType(Buffer::Kind::CloneGroups) = Buffer::Target::File;
+    Buffer::TargetType(Buffer::Kind::Tokens) = Buffer::Target::File;
+    Buffer::TargetType(Buffer::Kind::TokensText) = Buffer::Target::File;
+    Buffer::TargetType(Buffer::Kind::TokenizedFiles) = Buffer::Target::File;
+
     DBWriter::SetQueueMaxLength(500);
     TokenizedFile::SetMaxInstances(100000);
     ClonedProject::SetMaxInstances(1000);

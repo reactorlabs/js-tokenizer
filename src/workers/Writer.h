@@ -4,6 +4,7 @@
 #include <set>
 
 #include "../data.h"
+#include "../buffers.h"
 #include "../worker.h"
 
 
@@ -11,22 +12,19 @@ class WriterJob {
 public:
 
     WriterJob():
-        kind(Buffer::Kind::Error),
-        tokenizer(TokenizerKind::Generic) {
+        filename("ERROR") {
     }
 
-    WriterJob(Buffer::Kind kind, TokenizerKind tokenizer, std::string && what):
-        kind(kind),
-        tokenizer(tokenizer),
+    WriterJob(std::string const & filename, std::string && what):
+        filename(filename),
         what(std::move(what)) {
     }
 
-    Buffer::Kind kind;
-    TokenizerKind tokenizer;
+    std::string filename;
     std::string what;
 
     friend std::ostream & operator << (std::ostream & s, WriterJob const & job) {
-        s << job.kind << ": " << job.what.substr(0, 100) << "...";
+        s << "File " << job.filename << ": " << job.what.substr(0, 100) << "...";
     }
 };
 
@@ -39,99 +37,51 @@ public:
     }
     Writer(unsigned index):
         Worker<WriterJob>(Name(), index) {
-        assert(index == 0 and "Multiple writers currently not supported");
-        // initialize the contexts (i.e. create the output files)
-        for (TokenizerKind k : tokenizers_) {
-            unsigned idx = static_cast<unsigned>(k);
-            if (contexts_.size() < idx + 1)
-                contexts_.resize(idx + 1);
-            std::string outputDir = STR(outputDir_ << "/" << prefix(k));
-            createDirectory(outputDir);
-            contexts_[idx].initialize(outputDir);
-        }
     }
 
     static std::string & OutputDir() {
         return outputDir_;
     }
 
-    static void AddTokenizer(TokenizerKind k) {
-        tokenizers_.insert(k);
+    /** Close all files.
+     */
+    static void Finalize() {
+        for (auto i : outputFiles_)
+            delete i.second;
     }
-
 
 private:
-    static void openFile(std::ofstream & s, std::string const filename) {
-        s.open(filename);
-        if (not s.good()) {
-            std::cout << " Houston, we have a problem " << filename << std::endl;
-            throw STR("Unable to open " << filename);
-        }
-    }
-
-    struct Context {
-        std::ofstream tokenizedFile;
-        std::ofstream newToken;
-        std::ofstream tokenInfo;
-        std::ofstream clonePair;
-        std::ofstream cloneGroup;
-
-        void initialize(std::string const & outputDir) {
-            Writer::openFile(tokenizedFile, STR(outputDir << "/tokens-" << ClonedProject::StrideIndex() << ".txt"));
-            Writer::openFile(newToken, STR(outputDir << "/tokensText-" << ClonedProject::StrideIndex() << ".txt"));
-            Writer::openFile(tokenInfo, STR(outputDir << "/tokeninfo-" << ClonedProject::StrideIndex() << ".txt"));
-            Writer::openFile(clonePair, STR(outputDir << "/clonepairs-" << ClonedProject::StrideIndex() << ".txt"));
-            Writer::openFile(cloneGroup, STR(outputDir << "/clonegroups-" << ClonedProject::StrideIndex() << ".txt"));
+    struct OutputFile {
+        std::ofstream file;
+        std::mutex m_;
+        OutputFile(std::string const & filename) {
+            file.open(STR(Writer::OutputDir() << "/" << filename));
+            if (not file.good())
+                throw STR("Unable to open " << filename);
         }
     };
 
-    void process(Context & c) {
-        switch (job_.kind) {
-            case Buffer::Kind::TokenizedFile:
-                c.tokenizedFile << job_.what;
-                break;
-            case Buffer::Kind::TokensText:
-                c.newToken << job_.what;
-                break;
-            case Buffer::Kind::Tokens:
-                c.tokenInfo << job_.what;
-                break;
-            case Buffer::Kind::ClonePairs:
-                c.clonePair << job_.what;
-                break;
-            case Buffer::Kind::CloneGroups:
-                c.cloneGroup << job_.what;
-                break;
-            default:
-                throw STR("Buffer kind not supported for File target");
+    OutputFile & getOutputFile(std::string const & filename) {
+        std::lock_guard<std::mutex> g(m_);
+        auto i = outputFiles_.find(filename);
+        if (i == outputFiles_.end()) {
+            OutputFile * of = new OutputFile(filename);
+            outputFiles_[filename] = of;
+            return * of;
         }
-/*
-
-
-        // do nothing if the file is empty, then sourcerer is not interested
-        if (tokens.tokens.size() == 0)
-            return;
-        // otherwise output what we can
-        f << tokens.file->project->id << "," <<
-             tokens.file->id << "," <<
-             tokens.file->totalTokens << "," <<
-             tokens.file->uniqueTokens << "," <<
-             escape(tokens.file->tokensHash) << "," <<
-             "@#@";
-        auto i = tokens.tokens.begin(), e = tokens.tokens.end();
-        f << i->first << "@@::@@" << i->second;
-        while (++i != e)
-            f << "," << i->first << "@@::@@" << i->second;
-        f << std::endl; */
+        return * i->second;
     }
-
 
     void process() override {
-        process(contexts_[static_cast<unsigned>(job_.tokenizer)]);
+        OutputFile & of = getOutputFile(job_.filename);
+        std::lock_guard<std::mutex> g(of.m_);
+        of.file << job_.what;
     }
 
-    static std::set<TokenizerKind> tokenizers_;
     static std::string outputDir_;
 
-    std::vector<Context> contexts_;
+    static std::mutex m_;
+
+    static std::unordered_map<std::string, OutputFile *> outputFiles_;
+
 };

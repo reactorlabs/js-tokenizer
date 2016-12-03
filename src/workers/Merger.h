@@ -114,35 +114,35 @@ public:
 
     /** Flushes the buffers making sure if they contain any data, this will be written to the database.
      */
-    static void FlushBuffers() {
+/*    static void FlushBuffers() {
         for (auto & i : buffers_)
             i.second->flush();
-    }
+    } */
 
     static void FlushStatistics() {
         for (unsigned i = 0; i < contexts_.size(); ++i) {
             Context * c = contexts_[i];
             if (c == nullptr)
                 continue;
-            Buffer * cloneGroups = buffers_[Buffer::ID(Buffer::Kind::CloneGroups, c->tokenizer)];
-            Buffer * clonePairs = buffers_[Buffer::ID(Buffer::Kind::ClonePairs, c->tokenizer)];
-            Buffer * tokens = buffers_[Buffer::ID(Buffer::Kind::Tokens, c->tokenizer)];
+            Buffer & cloneGroups = Buffer::Get(Buffer::Kind::CloneGroups, c->tokenizer);
+            Buffer & clonePairs = Buffer::Get(Buffer::Kind::ClonePairs, c->tokenizer);
+            Buffer & tokens = Buffer::Get(Buffer::Kind::Tokens, c->tokenizer);
 
             for (auto const & ii : c->cloneGroups) {
-                cloneGroups->append(STR(
+                cloneGroups.append(STR(
                     ii.second.id << "," <<
                     ii.second.oldestId));
-                clonePairs->append(STR(
+                clonePairs.append(STR(
                     ii.second.id << "," <<
                     ii.second.id));
             }
             for (auto const & ii : c->tokenInfo) {
-                tokens->append(STR(
+                tokens.append(STR(
                     ii.second.id << "," <<
                     ii.second.uses));
             }
         }
-        FlushBuffers();
+        //FlushBuffers();
     }
 
 private:
@@ -159,15 +159,16 @@ private:
 
 
         Context(TokenizerKind k):
-            tokenizer(k) {
+            tokenizer(k) { /*
 #define INITIALIZE(kind, target) Merger::buffers_[Buffer::ID(kind, k)] = new Buffer(target, kind, k);
             INITIALIZE(Buffer::Kind::Stats, Buffer::Target::DB);
             INITIALIZE(Buffer::Kind::ClonePairs, Buffer::Target::File);
             INITIALIZE(Buffer::Kind::CloneGroups, Buffer::Target::File);
             INITIALIZE(Buffer::Kind::Tokens, Buffer::Target::File);
             INITIALIZE(Buffer::Kind::TokensText, Buffer::Target::File);
-            INITIALIZE(Buffer::Kind::TokenizedFile, Buffer::Target::File);
+            INITIALIZE(Buffer::Kind::TokenizedFiles, Buffer::Target::File);
 #undef INITIALIZE
+    */
         }
     };
 
@@ -190,7 +191,7 @@ private:
       Schedules any newly created tokens to be written to the database at the end.
      */
     void translateTokensToIds(Context & context) {
-        Buffer * b = buffers_[Buffer::ID(Buffer::Kind::TokensText, context.tokenizer)];
+        Buffer & b = Buffer::Get(Buffer::Kind::TokensText, context.tokenizer);
         std::unordered_map<std::string, unsigned> translatedTokens;
         for (auto & i : job_->tokens) {
             // create a hash of the token
@@ -207,14 +208,14 @@ private:
             if (isNew) {
                 // if the token is too large, i.e. more than 10kb show only first and last 1k characters
                 if (i.first.size() > 10 * 1024) {
-                    b->append(STR(
+                    b.append(STR(
                          id << "," <<
                          i.first.size() << "," <<
                          h << "," <<
                          escape(STR(i.first.substr(0, 1000) << "......" << i.first.substr(i.first.size() - 1000)))));
 
                 } else {
-                    b->append(STR(
+                    b.append(STR(
                          id << "," <<
                          i.first.size() << "," <<
                          h << "," <<
@@ -231,7 +232,7 @@ private:
     void process(Context & c) {
         // if the file has unique hash output also its statistics
         if (hasUniqueFileHash(* job_->file, c)) {
-            buffers_[Buffer::ID(Buffer::Kind::Stats, c.tokenizer)]->append(STR(
+            Buffer::Get(Buffer::Kind::Stats, c.tokenizer).append(STR(
                 escape(job_->file->fileHash) << "," <<
                 job_->file->bytes << "," <<
                 job_->file->lines << "," <<
@@ -260,11 +261,11 @@ private:
                 ss << i->first << "@@::@@" << i->second;
                 while (++i != e)
                     ss << "," << i->first << "@@::@@" << i->second;
-                buffers_[Buffer::ID(Buffer::Kind::TokenizedFile, c.tokenizer)]->append(ss.str());
+                Buffer::Get(Buffer::Kind::TokenizedFiles, c.tokenizer).append(ss.str());
             }
         } else {
             // emit the clone pair
-            buffers_[Buffer::ID(Buffer::Kind::ClonePairs, c.tokenizer)]->append(STR(
+            Buffer::Get(Buffer::Kind::ClonePairs, c.tokenizer).append(STR(
                 job_->file->id << "," <<
                 groupId));
         }
@@ -277,6 +278,6 @@ private:
 
     static std::vector<Context * > contexts_;
 
-    static std::unordered_map<Buffer::ID, Buffer *> buffers_;
+    //static std::unordered_map<Buffer::ID, Buffer *> buffers_;
 
 };
