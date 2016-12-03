@@ -34,7 +34,7 @@ Buffer & Buffer::Get(Kind kind, TokenizerKind tokenizer) {
         case Kind::TokenizedFiles: {
             auto i = buffers_.find(ID(kind, tokenizer));
             if (i == buffers_.end())
-                i = buffers_.insert(std::pair<ID, Buffer *>(ID(kind, tokenizer), new Buffer(kind))).first;
+                i = buffers_.insert(std::pair<ID, Buffer *>(ID(kind, tokenizer), new Buffer(kind, tokenizer))).first;
             return *(i->second);
         }
         default:

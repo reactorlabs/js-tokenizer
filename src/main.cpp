@@ -259,19 +259,19 @@ void stampAndSummary(std::chrono::high_resolution_clock::time_point const & sinc
     Buffer & stamp = Buffer::Get(Buffer::Kind::Stamp);
     Buffer & summary = Buffer::Get(Buffer::Kind::Summary);
 
-    stamp.append(STR("last-stride-index," << ClonedProject::StrideIndex()));
+    stamp.append(STR("'last-stride-index'," << ClonedProject::StrideIndex()));
 
-    summary.append(STR("stride-index," << ClonedProject::StrideIndex()));
-    summary.append(STR("stride-count," << ClonedProject::StrideCount()));
-    summary.append(STR("time," << secondsSince));
-    summary.append(STR("projects," << Downloader::JobsDone()));
-    summary.append(STR("projects-dropped," << Downloader::Errors()));
-    summary.append(STR("files," << Tokenizer::TotalFiles()));
-    summary.append(STR("tokenizer-errors," << Tokenizer::Errors()));
-    summary.append(STR("generic-files-unique," << Merger::UniqueFileHashes(TokenizerKind::Generic)));
-    summary.append(STR("generic-files-tokens-unique," << Merger::UniqueTokenHashes(TokenizerKind::Generic)));
-    summary.append(STR("js-files-unique," << Merger::UniqueFileHashes(TokenizerKind::JavaScript)));
-    summary.append(STR("js-files-tokens-unique," << Merger::UniqueTokenHashes(TokenizerKind::JavaScript)));
+    summary.append(STR("'stride-index'," << ClonedProject::StrideIndex()));
+    summary.append(STR("'stride-count'," << ClonedProject::StrideCount()));
+    summary.append(STR("'time'," << secondsSince));
+    summary.append(STR("'projects'," << Downloader::JobsDone()));
+    summary.append(STR("'projects-dropped'," << Downloader::Errors()));
+    summary.append(STR("'files'," << Tokenizer::TotalFiles()));
+    summary.append(STR("'tokenizer-errors'," << Tokenizer::Errors()));
+    summary.append(STR("'generic-files-unique'," << Merger::UniqueFileHashes(TokenizerKind::Generic)));
+    summary.append(STR("'generic-files-tokens-unique'," << Merger::UniqueTokenHashes(TokenizerKind::Generic)));
+    summary.append(STR("'js-files-unique'," << Merger::UniqueFileHashes(TokenizerKind::JavaScript)));
+    summary.append(STR("'js-files-tokens-unique'," << Merger::UniqueTokenHashes(TokenizerKind::JavaScript)));
     //summary.append(STR("," << ));
     Buffer::FlushAll();
 }
