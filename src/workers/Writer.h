@@ -55,6 +55,7 @@ private:
         std::ofstream file;
         std::mutex m_;
         OutputFile(std::string const & filename) {
+            createDirectoryForFile(filename);
             file.open(STR(Writer::OutputDir() << "/" << filename));
             if (not file.good())
                 throw STR("Unable to open " << filename);

@@ -70,6 +70,8 @@ public:
 
     static Target & TargetType(Kind kind);
 
+    static void FlushAll();
+
 private:
 
     void guardedFlush();

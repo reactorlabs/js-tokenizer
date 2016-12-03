@@ -72,24 +72,13 @@ enum class TokenizerKind {
     JavaScript
 };
 
-/** Returns the prefix used for tables and output files based on the tokenizer used.
- */
-inline std::string prefix(TokenizerKind k) {
-    switch (k) {
-        case TokenizerKind::Generic:
-            return "";
-        case TokenizerKind::JavaScript:
-            return "js_";
-    }
-}
-
 inline std::ostream & operator << (std::ostream & s, TokenizerKind t) {
     switch (t) {
         case TokenizerKind::Generic:
-            s << "Generic";
+            s << "generic";
             break;
         case TokenizerKind::JavaScript:
-            s << "JavaScript";
+            s << "js";
             break;
     }
     return s;

@@ -214,6 +214,12 @@ inline void createDirectory(std::string const & path) {
         throw STR("Unable to create directory " << path);
 }
 
+inline void createDirectoryForFile(std::string const & filename) {
+    std::string dir = filename.substr(0, filename.rfind("/"));
+    if (system(STR("mkdir -p " << dir).c_str()) != EXIT_SUCCESS)
+        throw STR("Unable to create directory " << dir << " for file " << filename);
+}
+
 inline std::string exec(std::string const & what, std::string const & path ) {
     char buffer[128];
     std::string result = "";

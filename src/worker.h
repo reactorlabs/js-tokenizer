@@ -104,6 +104,7 @@ public:
     }
 
     static void InitializeLog(std::string const & filename) {
+        createDirectoryForFile(filename);
         logfile_.open(filename);
         if (not logfile_.good())
             throw STR("Unable to open " << filename << " for logging.");

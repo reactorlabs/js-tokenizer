@@ -113,44 +113,28 @@ public:
         query(STR("USE " << db_));
     }
 
-/*    static std::string TableName(TokenizerKind tk, Buffer::Kind k) {
-        std::string result = prefix(tk);
-        switch (k) {
-            case Buffer::Kind::Projects:
-                return "projects";
-            case Buffer::Kind::ProjectsExtra:
-                return "projects_extra";
-            case Buffer::Kind::Files:
-                return "files";
-            case Buffer::Kind::FilesExtra:
-                return "files_extra";
-            case Buffer::Kind::Stats:
-                return result + "stats";
-            case Buffer::Kind::ClonePairs:
-                return result + "clone_pairs";
-            case Buffer::Kind::CloneGroups:
-                return result + "clone_groups";
-            case Buffer::Kind::Tokens:
-                return result + "tokens";
-            case Buffer::Kind::TokensText:
-                return result + "tokens_text";
-            default:
-                throw STR("Buffer kind not supported for DB target");
-        }
-    } */
-
     static std::string & DatabaseName() {
         return db_;
     }
 
-/*    static std::string const TableStamp;
-    static std::string const TableSummary;
-    */
+    static bool & ResetDatabase() {
+        return resetDatabase_;
+    }
+
+    static void CheckDatabase() {
+        SQLConnection sql;
+        if (resetDatabase_) {
+            Thread::Print(STR("  dropping databae " << DatabaseName() << std::endl));
+            sql.query(STR("CREATE DATABASE IF NOT EXISTS " << DatabaseName()));
+            sql.query(STR("DROP DATABASE " << DatabaseName()));
+        }
+        Thread::Print(STR("  checking database " << DatabaseName() << std::endl));
+        sql.query(STR("CREATE DATABASE IF NOT EXISTS " << DatabaseName()));
+
+    }
 
 
 private:
-
-
 
     void process() override {
         if (queries_++ == 10) {
@@ -172,47 +156,9 @@ private:
 
     static std::string db_;
 
+    static bool resetDatabase_;
+
 };
 
 
 
-
-class DBBuffer {
-public:
-    static const unsigned BUFFER_LIMIT = 1024 * 1024; // 1mb
-
-    DBBuffer(std::string const & name = ""):
-        tableName_(name) {
-    }
-
-    void append(std::string const & what) {
-        std::lock_guard<std::mutex> g(m_);
-        if (buffer_.empty())
-            buffer_ = STR("INSERT INTO " << tableName_ << " VALUES (" << what << ")");
-        else
-            buffer_ += STR(",(" << what << ")");
-        if (buffer_.size() > BUFFER_LIMIT)
-            guardedFlush();
-    }
-
-    void flush() {
-        std::lock_guard<std::mutex> g(m_);
-        if (not buffer_.empty())
-            guardedFlush();
-    }
-
-    void setTableName(std::string const & value) {
-        assert (tableName_.empty() or tableName_ == value);
-        tableName_ = value;
-    }
-
-private:
-    void guardedFlush() {
-        DBWriter::Schedule(DBWriterJob(std::move(buffer_)));
-        assert(buffer_.empty());
-    }
-
-    std::mutex m_;
-    std::string buffer_;
-    std::string tableName_;
-};

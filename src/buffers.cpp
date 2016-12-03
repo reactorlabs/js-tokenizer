@@ -46,6 +46,11 @@ Buffer::Target & Buffer::TargetType(Kind kind) {
    return bufferTargets_[kind];
 }
 
+void Buffer::FlushAll() {
+    for (auto i : buffers_)
+        i.second->flush();
+}
+
 Buffer::Buffer(Kind kind, TokenizerKind tokenizer):
     target_(bufferTargets_[kind]),
     kind_(kind),
@@ -146,6 +151,10 @@ void Buffer::guardedFlush() {
         switch (kind_) {
             case Kind::Stats:
                 buffer_ = STR("INSERT IGNORE INTO " << tableName() << " VALUES " << buffer_);
+                break;
+            case Kind::Summary:
+            case Kind::Stamp:
+                buffer_ = STR("REPLACE INTO " << tableName() << " VALUES " << buffer_);
                 break;
             default:
                 buffer_ = STR("INSERT INTO " << tableName() << " VALUES " << buffer_);

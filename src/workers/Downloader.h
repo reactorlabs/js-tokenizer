@@ -37,21 +37,13 @@ public:
 
     Downloader(unsigned index):
         Worker<DownloaderJob>(Name(), index) {
-    }
-
-    static void SetDownloadDir(std::string const & value) {
-        downloadDir_  = value;
-        createDirectory(value);
-    }
-
-    static void Initialize() {
         createDirectory(downloadDir_);
     }
 
-/*    static void FlushBuffers() {
-        projects_.flush();
-        projectsExtra_.flush();
-    } */
+    static std::string & DownloadDir() {
+        return downloadDir_;
+    }
+
 
 private:
     virtual void process() {
