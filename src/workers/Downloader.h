@@ -55,32 +55,6 @@ public:
 private:
     virtual void process() {
         job_->path = STR(downloadDir_ << "/" << job_->id);
-        // TODO THIS IS SUPER STUPID  -- DELETE ME
-        /*
-        if (not isDirectory(job_->path)) {
-            //Log("Unable to clone project");
-            return;
-        }
-
-        // get the commit number
-        job_->commit = exec("git rev-parse HEAD", job_->path);
-
-        // and of course, pass it to the tokenizer
-        Tokenizer::Schedule(TokenizerJob(job_));
-
-        // pass the project to the DB writer.
-        projects_.append(STR(
-            job_->id <<
-            ",NULL," <<
-            escape(job_->url)));
-        projectsExtra_.append(STR(
-            job_->id << "," <<
-            job_->createdAt << "," <<
-            escape(job_->commit)));
-
-        return;
-        */
-        // NORMAL CODE GOES ON HERE
 
         // if the directory exists, delete it first
         if (isDirectory(job_->path))

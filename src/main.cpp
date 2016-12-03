@@ -10,11 +10,23 @@
 
 #include "workers/CSVReader.h"
 
-/** Changes
+/**
 
-1) Do not store token lists and tokens in
-2) Insert ignore file stats
+# Tokenization
 
+Projects, files and file extras are simple enough as they will never collide among strides so they go immediately to the database.
+
+Stats also go to the database, but here we must do insert ignore. Even if we tokenie the file twice, because the stats are id'd only on the file hash it does not matter as it will always be the same.
+
+Everything else has to be merged and therefore goes to files:
+
+clonepairs (id and id)
+clonegroups (id is file id, hash of the group is based on the tokens hash of that file)
+
+
+# Merging
+
+Once the strides finish, merging o
 
 
 
@@ -222,7 +234,6 @@ void checkTables(SQLConnection & sql, TokenizerKind t) {
     Thread::Print(STR("    " << tCloneGroups << std::endl));
     sql.query(STR("CREATE TABLE IF NOT EXISTS " << tCloneGroups << " ("
         "groupId INT NOT NULL,"
-        "hash CHAR(32) NOT NULL,"
         "oldestId INT NOT NULL,"
         "PRIMARY KEY(groupId),"
         "UNIQUE INDEX(groupId))"));
@@ -441,6 +452,7 @@ void run() {
     std::thread t([]() {
         try {
             Downloader::FlushBuffers();
+            Tokenizer::FlushBuffers();
             Merger::FlushBuffers();
             Merger::FlushStatistics();
         } catch (std::string const & e) {

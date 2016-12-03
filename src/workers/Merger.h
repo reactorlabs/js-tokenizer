@@ -120,36 +120,29 @@ public:
     }
 
     static void FlushStatistics() {
-/**
-
-        assert(false and "Not implemented");
         for (unsigned i = 0; i < contexts_.size(); ++i) {
             Context * c = contexts_[i];
             if (c == nullptr)
                 continue;
+            Buffer * cloneGroups = buffers_[Buffer::ID(Buffer::Kind::CloneGroups, c->tokenizer)];
+            Buffer * clonePairs = buffers_[Buffer::ID(Buffer::Kind::ClonePairs, c->tokenizer)];
+            Buffer * tokens = buffers_[Buffer::ID(Buffer::Kind::Tokens, c->tokenizer)];
+
             for (auto const & ii : c->cloneGroups) {
-                buffers_[c->tableCloneGroups].append(STR(
+                cloneGroups->append(STR(
                     ii.second.id << "," <<
                     ii.second.oldestId));
-                buffers_[c->tableClonePairs].append(STR(
+                clonePairs->append(STR(
                     ii.second.id << "," <<
                     ii.second.id));
-                // clone group hash for snapshoting
-                buffers_[c->tableCloneGroupHashes].append(STR(
-                    ii.second.id << "," <<
-                    escape(ii.first)));
             }
             for (auto const & ii : c->tokenInfo) {
-                buffers_[c->tableTokens].append(STR(
+                tokens->append(STR(
                     ii.second.id << "," <<
                     ii.second.uses));
-                // token info hash for snapshoting
-                buffers_[c->tableTokenHashes].append(STR(
-                    ii.second.id << "," <<
-                    escape(ii.first)));
             }
         }
-        FlushBuffers(); **/
+        FlushBuffers();
     }
 
 private:
@@ -168,9 +161,6 @@ private:
         Context(TokenizerKind k):
             tokenizer(k) {
 #define INITIALIZE(kind, target) Merger::buffers_[Buffer::ID(kind, k)] = new Buffer(target, kind, k);
-            INITIALIZE(Buffer::Kind::Projects, Buffer::Target::DB);
-            INITIALIZE(Buffer::Kind::Files, Buffer::Target::DB);
-            INITIALIZE(Buffer::Kind::FilesExtra, Buffer::Target::DB);
             INITIALIZE(Buffer::Kind::Stats, Buffer::Target::DB);
             INITIALIZE(Buffer::Kind::ClonePairs, Buffer::Target::File);
             INITIALIZE(Buffer::Kind::CloneGroups, Buffer::Target::File);
@@ -239,16 +229,6 @@ private:
     }
 
     void process(Context & c) {
-        // first store the file
-        buffers_[Buffer::ID(Buffer::Kind::Files, c.tokenizer)]->append(STR(
-            job_->file->id << "," <<
-            job_->file->project->id << "," <<
-            escape(job_->file->relPath) << "," <<
-            escape(job_->file->fileHash)));
-        // and its extra information
-        buffers_[Buffer::ID(Buffer::Kind::FilesExtra, c.tokenizer)]->append(STR(
-            job_->file->id << "," <<
-            job_->file->createdAt));
         // if the file has unique hash output also its statistics
         if (hasUniqueFileHash(* job_->file, c)) {
             buffers_[Buffer::ID(Buffer::Kind::Stats, c.tokenizer)]->append(STR(

@@ -48,6 +48,11 @@ public:
         tokenizers_.insert(kind);
     }
 
+    static void FlushBuffers() {
+        files_.flush();
+        filesExtra_.flush();
+    }
+
 private:
     bool isLanguageFile(std::string const & filename) {
         return (filename.find(".js") == filename.size() - 3);
@@ -256,6 +261,15 @@ private:
                     isValid = tokenize<JavaScriptTokenizer>(id, relPath, cdate, data, length, fileHash);
                 if (isValid and (tokenizers_.find(TokenizerKind::Generic) != tokenizers_.end()))
                     tokenize<GenericTokenizer>(id, relPath, cdate, data, length, fileHash);
+                // send the file to the backend
+                files_.append(STR(
+                    id << "," <<
+                    job_->id << "," <<
+                    escape(relPath) << "," <<
+                    escape(fileHash)));
+                filesExtra_.append(STR(
+                    id << "," <<
+                    cdate));
                 // update counters
                 ++totalFiles_;
                 totalBytes_ += length;
@@ -269,6 +283,9 @@ private:
     static std::atomic_uint utf16le_;
     static std::atomic_uint totalFiles_;
     static std::atomic_ulong totalBytes_;
+
+    static Buffer files_;
+    static Buffer filesExtra_;
 
     static std::set<TokenizerKind> tokenizers_;
 };
