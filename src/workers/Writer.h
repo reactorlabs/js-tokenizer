@@ -78,7 +78,7 @@ private:
 
         void initialize(std::string const & outputDir) {
             Writer::openFile(tokenizedFile, STR(outputDir << "/tokens-" << ClonedProject::StrideIndex() << ".txt"));
-            Writer::openFile(newToken, STR(outputDir << "/tokens-" << ClonedProject::StrideIndex() << ".txt"));
+            Writer::openFile(newToken, STR(outputDir << "/tokensText-" << ClonedProject::StrideIndex() << ".txt"));
             Writer::openFile(tokenInfo, STR(outputDir << "/tokeninfo-" << ClonedProject::StrideIndex() << ".txt"));
             Writer::openFile(clonePair, STR(outputDir << "/clonepairs-" << ClonedProject::StrideIndex() << ".txt"));
             Writer::openFile(cloneGroup, STR(outputDir << "/clonegroups-" << ClonedProject::StrideIndex() << ".txt"));
