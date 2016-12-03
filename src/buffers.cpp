@@ -180,7 +180,7 @@ std::string Buffer::tableName() {
         case Kind::Error:
             assert(false and "This should never happen");
         default:
-            return STR(tokenizer_ << "-" << kind_);
+            return STR(tokenizer_ << "_" << kind_);
     }
 }
 
@@ -210,34 +210,34 @@ std::ostream & operator << (std::ostream & s, Buffer::Kind k) {
             s << "projects";
             break;
         case Buffer::Kind::ProjectsExtra:
-            s << "projects-extra";
+            s << "projects_extra";
             break;
         case Buffer::Kind::Files:
             s << "files";
             break;
         case Buffer::Kind::FilesExtra:
-            s << "files-extra";
+            s << "files_extra";
             break;
         case Buffer::Kind::Stats:
             s << "stats";
             break;
         case Buffer::Kind::ClonePairs:
-            s << "clone-pairs-" << ClonedProject::StrideIndex();
+            s << "clone_pairs_" << ClonedProject::StrideIndex();
             break;
         case Buffer::Kind::CloneGroups:
-            s << "clone-groups-" << ClonedProject::StrideIndex();
+            s << "clone_groups_" << ClonedProject::StrideIndex();
             break;
         case Buffer::Kind::Tokens:
-            s << "tokens-" << ClonedProject::StrideIndex();
+            s << "tokens_" << ClonedProject::StrideIndex();
             break;
         case Buffer::Kind::TokensText:
-            s << "tokens-text-" << ClonedProject::StrideIndex();
+            s << "tokens_text_" << ClonedProject::StrideIndex();
             break;
         case Buffer::Kind::TokenizedFiles:
-            s << "tokenized-files-" << ClonedProject::StrideIndex();
+            s << "tokenized_files_" << ClonedProject::StrideIndex();
             break;
         case Buffer::Kind::Summary:
-            s << "summary-" << ClonedProject::StrideIndex();
+            s << "summary_" << ClonedProject::StrideIndex();
             break;
         default:
             s << "Error";

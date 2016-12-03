@@ -12,6 +12,9 @@
 
 #include "hashes/md5.h"
 
+#include <cassert>
+
+
 /** Shorthand for converting different types to string as long as they support the std::ostream << operator.
 */
 #define STR(WHAT) static_cast<std::stringstream&>(std::stringstream() << WHAT).str()
@@ -215,6 +218,7 @@ inline void createDirectory(std::string const & path) {
 }
 
 inline void createDirectoryForFile(std::string const & filename) {
+    assert(filename.rfind("/") != std::string::npos);
     std::string dir = filename.substr(0, filename.rfind("/"));
     if (system(STR("mkdir -p " << dir).c_str()) != EXIT_SUCCESS)
         throw STR("Unable to create directory " << dir << " for file " << filename);

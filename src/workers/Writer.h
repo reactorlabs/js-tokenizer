@@ -55,11 +55,12 @@ private:
         std::ofstream file;
         std::mutex m_;
         OutputFile(std::string const & filename) {
-            Thread::Print(STR("  creating file " << filename << std::endl));
-            createDirectoryForFile(filename);
-            file.open(STR(Writer::OutputDir() << "/" << filename));
+            std::string x = STR(Writer::OutputDir() << "/" << filename);
+            Thread::Print(STR("  creating file " << x << std::endl));
+            createDirectoryForFile(x);
+            file.open(x);
             if (not file.good())
-                throw STR("Unable to open " << filename);
+                throw STR("Unable to open " << x);
         }
     };
 
