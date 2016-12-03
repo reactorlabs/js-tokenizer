@@ -12,6 +12,9 @@
 
 #include "helpers.h"
 
+constexpr char CSI = 0x1b;
+
+
 class Thread {
 public:
 
@@ -49,6 +52,7 @@ public:
 
     static void Print(std::string const & what, bool logToo = true) {
         std::lock_guard<std::mutex> g(out_);
+        std::cout << CSI << "[K"; // erase line
         std::cout << what;
         if (logToo and logfile_.good())
             logfile_ << what;

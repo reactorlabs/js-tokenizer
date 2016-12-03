@@ -35,9 +35,6 @@ Once the strides finish, merging o
 */
 
 
-constexpr char CSI = 0x1b;
-
-
 int lastStride = -1;
 
 

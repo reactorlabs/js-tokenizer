@@ -120,8 +120,8 @@ private:
                     if (not isDeleted()) {
                         if (not isForked()) {
                             ++validProjects_;
-                            if (validProjects_ > 10)
-                                break;
+                            //if (validProjects_ > 10)
+                            //    break;
                             // pass the project to the downloader
                             try {
                                 Downloader::Schedule(DownloaderJob(new ClonedProject(
