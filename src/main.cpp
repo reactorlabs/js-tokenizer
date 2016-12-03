@@ -280,8 +280,6 @@ void run() {
     Thread::Print(STR("Running strided tokenizer, stride N = " << ClonedProject::StrideCount() << ", index = " << ClonedProject::StrideIndex() << std::endl));
     auto start = std::chrono::high_resolution_clock::now();
 
-    DBWriter::ResetDatabase();
-
     DBWriter::CheckDatabase();
 
     Thread::Print(STR("  initializing threads" << std::endl));
@@ -331,7 +329,7 @@ void run() {
     // todo print last info table
 }
 
-void setup() {
+void setup(int argc, char * argv[]) {
     // set default targets for the various buffers
     Buffer::TargetType(Buffer::Kind::Stamp) = Buffer::Target::DB;
     Buffer::TargetType(Buffer::Kind::Summary) = Buffer::Target::DB;
@@ -347,15 +345,16 @@ void setup() {
     Buffer::TargetType(Buffer::Kind::TokenizedFiles) = Buffer::Target::File;
 
     DBWriter::SetQueueMaxLength(500);
-    DBWriter::ResetDatabase() = true;
 
     Writer::SetQueueMaxLength(500);
     TokenizedFile::SetMaxInstances(100000);
     ClonedProject::SetMaxInstances(1000);
 
     // This has to be done *before* we add tokenizers !!!!!
-    ClonedProject::StrideCount() = 20;
-    ClonedProject::StrideIndex() = 0;
+    ClonedProject::StrideCount() = 100;
+    ClonedProject::StrideIndex() = std::atoi(argv[1]);
+    DBWriter::ResetDatabase() = ClonedProject::StrideIndex() == 0;
+
     // set the stride id for the files so that they are unique across strides
     TokenizedFile::InitializeStrideId();
 
@@ -367,7 +366,7 @@ void setup() {
     SQLConnection::SetConnection("127.0.0.1", "peta", "pycus");
 
     // !!!!!!!!
-    DBWriter::DatabaseName() = "github_all";
+    DBWriter::DatabaseName() = "github_js";
     Downloader::DownloadDir() = "/data/sourcerer/github/download_all";
     Writer::OutputDir() = "/data/sourcerer/github/output_text";
     ClonedProject::KeepProjects() = false;
@@ -387,7 +386,7 @@ int main(int argc, char * argv[]) {
 
 
     try {
-        setup();
+        setup(argc, argv);
         run();
     } catch (std::string const & e) {
         std::cerr << e << std::endl;
