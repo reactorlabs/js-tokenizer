@@ -58,6 +58,7 @@ Buffer::Buffer(Kind kind, TokenizerKind tokenizer):
     if (target_ == Target::DB) {
         // if target is database, create the table
         std::stringstream ss;
+        Thread::Print(STR("  creating table " << tableName() << std::endl));
         ss << "CREATE TABLE IF NOT EXISTS " << tableName() << "(";
         switch (kind_) {
             case Kind::Stamp:

@@ -232,7 +232,7 @@ private:
     void process(Context & c) {
         // if the file has unique hash output also its statistics
         if (hasUniqueFileHash(* job_->file, c)) {
-            Buffer::Get(Buffer::Kind::Stats, c.tokenizer).append(STR(
+            Buffer::Get(Buffer::Kind::Stats).append(STR(
                 escape(job_->file->fileHash) << "," <<
                 job_->file->bytes << "," <<
                 job_->file->lines << "," <<
