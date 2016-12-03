@@ -283,8 +283,8 @@ void run() {
     initializeThreads<CSVReader>(1);
     initializeThreads<Downloader>(50);
     initializeThreads<Tokenizer>(4);
-    initializeThreads<Merger>(4);
-    initializeThreads<DBWriter>(4);
+    initializeThreads<Merger>(8);
+    initializeThreads<DBWriter>(2);
     initializeThreads<Writer>(1);
     Thread::Print(STR("  scheduling csv file " << "TODO WHICH ONE" << std::endl));
     CSVReader::Schedule("/data/sourcerer/ghtorrent/mysql-2016-11-01/projects.csv");
