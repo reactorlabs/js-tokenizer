@@ -54,8 +54,10 @@ public:
         std::lock_guard<std::mutex> g(out_);
         std::cout << CSI << "[K"; // erase line
         std::cout << what;
-        if (logToo and logfile_.good())
+        if (logToo and logfile_.good()) {
             logfile_ << what;
+            logfile_.flush();
+        }
         std::cout.flush();
     }
 

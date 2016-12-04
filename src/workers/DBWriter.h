@@ -143,7 +143,7 @@ private:
         }
         try {
             // if it is project, use default context as projects table is identical for all tokenizers
-            Thread::Log(STR(job_ << std::endl));
+            Thread::Print(STR(job_ << std::endl));
             query(job_.buffer);
         } catch (std::string const & e) {
             reconnect();
