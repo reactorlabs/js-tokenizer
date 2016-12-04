@@ -261,15 +261,24 @@ void stampAndSummary(std::chrono::high_resolution_clock::time_point const & sinc
     summary.append(STR("'stride-index'," << ClonedProject::StrideIndex()));
     summary.append(STR("'stride-count'," << ClonedProject::StrideCount()));
     summary.append(STR("'time'," << secondsSince));
-    summary.append(STR("'projects'," << Downloader::JobsDone()));
-    summary.append(STR("'projects-dropped'," << Downloader::Errors()));
+    summary.append(STR("'projects'," << Downloader::JobsDone() - Downloader::Errors()));
     summary.append(STR("'files'," << Tokenizer::TotalFiles()));
-    summary.append(STR("'tokenizer-errors'," << Tokenizer::Errors()));
     summary.append(STR("'generic-files-unique'," << Merger::UniqueFileHashes(TokenizerKind::Generic)));
     summary.append(STR("'generic-files-tokens-unique'," << Merger::UniqueTokenHashes(TokenizerKind::Generic)));
     summary.append(STR("'js-files-unique'," << Merger::UniqueFileHashes(TokenizerKind::JavaScript)));
     summary.append(STR("'js-files-tokens-unique'," << Merger::UniqueTokenHashes(TokenizerKind::JavaScript)));
-    //summary.append(STR("," << ));
+    summary.append(STR("'csv-reader-jobs'," << CSVReader::JobsDone()));
+    summary.append(STR("'csv-reader-errors'," << CSVReader::Errors()));
+    summary.append(STR("'downloader-jobs'," << Downloader::JobsDone));
+    summary.append(STR("'downloader-errors'," << Downloader::Errors()));
+    summary.append(STR("'tokenizer-jobs'," << Tokenizer::JobsDone()));
+    summary.append(STR("'tokenizer-errors'," << Tokenizer::Errors()));
+    summary.append(STR("'merger-jobs'," << Merger::JobsDone()));
+    summary.append(STR("'merger-errors'," << Merger::Errors()));
+    summary.append(STR("'db-writer-jobs'," << DBWriter::JobsDone()));
+    summary.append(STR("'db-writer-errors'," << DBWriter::Errors()));
+    summary.append(STR("'file-writer-jobs'," << Writer::JobsDone()));
+    summary.append(STR("'file-writer-errors'," << Writer::Errors()));
     Buffer::FlushAll();
 }
 
