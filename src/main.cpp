@@ -205,8 +205,32 @@ bool stats(std::string & output, std::chrono::high_resolution_clock::time_point 
 void resumeState() {
     if (ClonedProject::StrideIndex() == 0)
         return; // nothing to resume
+
+
+
     Thread::Print(STR("Resuming previous state" << std::endl));
     DBWriter::CheckDatabase();
+    // drop indices on the databases to see if we have speedup in inserts:
+    if (ClonedProject::StrideIndex() == 4) {
+        Thread::Print(STR("Dropping indices..." << std::endl));
+        try {
+            SQLConnection c;
+            c.query(STR("USE " << DBWriter::DatabaseName()));
+            c.query("DROP INDEX projectId ON projects");
+            c.query("DROP INDEX projectId ON projects_extra");
+            c.query("DROP INDEX fileId ON files");
+            c.query("DROP INDEX fileHash ON files");
+            c.query("DROP INDEX fileId ON files_extra");
+            c.query("DROP INDEX fileHash ON generic_stats");
+            c.query("DROP INDEX tokensHash ON generic_stats");
+            c.query("DROP INDEX fileHash ON js_stats");
+            c.query("DROP INDEX tokenHash ON js_stats");
+        } catch (std::string const & e) {
+            Thread::Print(STR("Error while dropping indices: " << e << std::endl));
+        } catch (...) {
+            Thread::Print(STR("Unknown error while dropping indices" << std::endl));
+        }
+    }
     SQLConnection sql;
     sql.query(STR("USE " << DBWriter::DatabaseName()));
     std::string tableName = Buffer::TableName(Buffer::Kind::Stats, TokenizerKind::Generic);
@@ -270,7 +294,6 @@ void resumeState(SQLConnection & sql, TokenizerKind t) {
     Thread::Print(STR("      total: " << Merger::NumTokens(t) << std::endl));
    #endif
 }
-
 
 template<typename T>
 void initializeThreads(unsigned num) {

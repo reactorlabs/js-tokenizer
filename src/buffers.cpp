@@ -75,31 +75,25 @@ Buffer::Buffer(Kind kind, TokenizerKind tokenizer):
                 ss << "projectId INT(6) NOT NULL," <<
                       "projectPath VARCHAR(4000) NULL," <<
                       "projectUrl VARCHAR(4000) NOT NULL," <<
-                      "PRIMARY KEY (projectId)," <<
-                      "UNIQUE INDEX (projectId))";
+                      "PRIMARY KEY (projectId))";
                 break;
             case Kind::ProjectsExtra:
                 ss << "projectId INT NOT NULL,"
                       "createdAt INT UNSIGNED NOT NULL,"
                       "commit CHAR(40),"
-                      "PRIMARY KEY (projectId),"
-                      "UNIQUE INDEX (projectId))";
+                      "PRIMARY KEY (projectId))";
                 break;
             case Kind::Files:
                 ss << "fileId BIGINT(6) UNSIGNED NOT NULL," <<
                       "projectId INT(6) UNSIGNED NOT NULL," <<
                       "relativeUrl VARCHAR(4000) NOT NULL," <<
                       "fileHash CHAR(32) NOT NULL," <<
-                      "PRIMARY KEY (fileId)," <<
-                      "UNIQUE INDEX (fileId)," <<
-                      "INDEX (projectId)," <<
-                      "INDEX (fileHash))";
+                      "PRIMARY KEY (fileId))";
                 break;
             case Kind::FilesExtra:
                 ss << "fileId INT NOT NULL," <<
                       "createdAt INT UNSIGNED NOT NULL," <<
-                      "PRIMARY KEY (fileId)," <<
-                      "UNIQUE INDEX (fileId))";
+                      "PRIMARY KEY (fileId))";
                 break;
             case Kind::Stats:
                 ss << "fileHash CHAR(32) NOT NULL," <<
@@ -110,35 +104,29 @@ Buffer::Buffer(Kind kind, TokenizerKind tokenizer):
                       "totalTokens INT(6) UNSIGNED NOT NULL," <<
                       "uniqueTokens INT(6) UNSIGNED NOT NULL," <<
                       "tokenHash CHAR(32) NOT NULL," <<
-                      "PRIMARY KEY (fileHash)," <<
-                      "UNIQUE INDEX (fileHash)," <<
-                      "INDEX (tokenHash))";
+                      "PRIMARY KEY (fileHash))";
                 break;
             case Kind::ClonePairs:
                 ss << "fileId INT NOT NULL," <<
                       "groupId INT NOT NULL," <<
-                      "PRIMARY KEY(fileId)," <<
-                      "UNIQUE INDEX(fileId))";
+                      "PRIMARY KEY(fileId))";
                 break;
             case Kind::CloneGroups:
                 ss << "groupId INT NOT NULL," <<
                       "oldestId INT NOT NULL," <<
-                      "PRIMARY KEY(groupId)," <<
-                      "UNIQUE INDEX(groupId))";
+                      "PRIMARY KEY(groupId))";
                 break;
             case Kind::Tokens:
                 ss << "id INT NOT NULL," <<
                       "uses INT NOT NULL," <<
-                      "PRIMARY KEY(id)," <<
-                      "UNIQUE INDEX(id))";
+                      "PRIMARY KEY(id))";
                 break;
             case Kind::TokensText:
                 ss << "id INT NOT NULL," <<
                       "size INT NOT NULL," <<
                       "hash CHAR(32)," <<
                       "text LONGTEXT NOT NULL," <<
-                      "PRIMARY KEY(id)," <<
-                      "UNIQUE INDEX(id))";
+                      "PRIMARY KEY(id))";
             case Kind::TokenizedFiles:
             default:
                 assert(false and "Not supported in db mode");
