@@ -13,8 +13,7 @@ Buffer & Buffer::Get(Kind kind) {
         case Kind::Projects:
         case Kind::ProjectsExtra:
         case Kind::Files:
-        case Kind::FilesExtra:
-        case Kind::Stats: {
+        case Kind::FilesExtra: {
             auto i = buffers_.find(ID(kind));
             if (i == buffers_.end())
                 i = buffers_.insert(std::pair<ID, Buffer *>(ID(kind), new Buffer(kind))).first;
@@ -27,6 +26,7 @@ Buffer & Buffer::Get(Kind kind) {
 
 Buffer & Buffer::Get(Kind kind, TokenizerKind tokenizer) {
     switch (kind) {
+        case Kind::Stats:
         case Kind::ClonePairs:
         case Kind::CloneGroups:
         case Kind::Tokens:
@@ -175,7 +175,6 @@ std::string Buffer::tableName() {
         case Kind::ProjectsExtra:
         case Kind::Files:
         case Kind::FilesExtra:
-        case Kind::Stats:
             return STR(kind_);
         case Kind::Error:
             assert(false and "This should never happen");
@@ -192,7 +191,6 @@ std::string Buffer::fileName() {
         case Kind::ProjectsExtra:
         case Kind::Files:
         case Kind::FilesExtra:
-        case Kind::Stats:
             return STR(kind_ << ".txt");
         case Kind::Error:
             assert(false and "This should never happen");
