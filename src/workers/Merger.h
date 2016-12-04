@@ -150,6 +150,7 @@ private:
         TokenizerKind tokenizer;
         std::unordered_map<Hash, CloneGroup> cloneGroups;
         std::unordered_map<Hash, TokenInfo> tokenInfo;
+        // TODO this is wasteful, we just need hash -> 2 booleans
         std::unordered_set<Hash> uniqueFileHashes;
         std::mutex mCloneGroups;
         std::mutex mTokenInfo;

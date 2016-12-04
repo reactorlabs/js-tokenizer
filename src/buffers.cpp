@@ -58,8 +58,8 @@ Buffer::Buffer(Kind kind, TokenizerKind tokenizer):
     if (target_ == Target::DB) {
         // if target is database, create the table
         std::stringstream ss;
-        Thread::Print(STR("  creating table " << tableName() << std::endl));
-        ss << "CREATE TABLE IF NOT EXISTS " << tableName() << "(";
+        Thread::Print(STR("  creating table " << TableName(kind_, tokenizer_) << std::endl));
+        ss << "CREATE TABLE IF NOT EXISTS " << TableName(kind_, tokenizer_) << "(";
         switch (kind_) {
             case Kind::Stamp:
                 ss << "name VARCHAR(100) NOT NULL," <<
@@ -150,54 +150,52 @@ Buffer::Buffer(Kind kind, TokenizerKind tokenizer):
 void Buffer::guardedFlush() {
     if (target_ == Target::DB) {
         switch (kind_) {
-            case Kind::Stats:
-                buffer_ = STR("INSERT IGNORE INTO " << tableName() << " VALUES " << buffer_);
-                break;
             case Kind::Summary:
             case Kind::Stamp:
-                buffer_ = STR("REPLACE INTO " << tableName() << " VALUES " << buffer_);
+                buffer_ = STR("REPLACE INTO " << TableName(kind_, tokenizer_) << " VALUES " << buffer_);
                 break;
             default:
-                buffer_ = STR("INSERT INTO " << tableName() << " VALUES " << buffer_);
+                buffer_ = STR("INSERT INTO " << TableName(kind_, tokenizer_) << " VALUES " << buffer_);
         }
         DBWriter::Schedule(DBWriterJob(std::move(buffer_)));
     } else {
-        Writer::Schedule(WriterJob(fileName(), std::move(buffer_)));
+        Writer::Schedule(WriterJob(FileName(kind_, tokenizer_), std::move(buffer_)));
     }
     assert(buffer_.empty());
 }
 
-std::string Buffer::tableName() {
-    switch (kind_) {
+std::string Buffer::TableName(Buffer::Kind kind, TokenizerKind tokenizer) {
+    switch (kind) {
         case Kind::Stamp:
         case Kind::Summary:
         case Kind::Projects:
         case Kind::ProjectsExtra:
         case Kind::Files:
         case Kind::FilesExtra:
-            return STR(kind_);
+            return STR(kind);
         case Kind::Error:
             assert(false and "This should never happen");
         default:
-            return STR(tokenizer_ << "_" << kind_);
+            return STR(tokenizer << "_" << kind);
     }
 }
 
-std::string Buffer::fileName() {
-    switch (kind_) {
+std::string Buffer::FileName(Buffer::Kind kind, TokenizerKind tokenizer) {
+    switch (kind) {
         case Kind::Stamp:
         case Kind::Summary:
         case Kind::Projects:
         case Kind::ProjectsExtra:
         case Kind::Files:
         case Kind::FilesExtra:
-            return STR(kind_ << ".txt");
+            return STR(kind << ".txt");
         case Kind::Error:
             assert(false and "This should never happen");
         default:
-            return STR(tokenizer_ << "/" << kind_ << ".txt");
+            return STR(tokenizer << "/" << kind << ".txt");
     }
 }
+
 
 std::ostream & operator << (std::ostream & s, Buffer::Kind k) {
     switch (k) {

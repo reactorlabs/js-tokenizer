@@ -72,13 +72,13 @@ public:
 
     static void FlushAll();
 
+    std::string static TableName(Buffer::Kind kind, TokenizerKind tokenizer);
+
+    std::string static FileName(Buffer::Kind kind, TokenizerKind tokenizer);
+
 private:
 
     void guardedFlush();
-
-    std::string tableName();
-
-    std::string fileName();
 
     Target target_;
     Kind kind_;

@@ -198,6 +198,34 @@ bool stats(std::string & output, std::chrono::high_resolution_clock::time_point 
     return true;
 }
 
+/** Resumes state so that we do not have to INSERT IGNORE into the stats tables. To be on a safe side, only ingests unique file hashes for both tokenizers if there are any in the tables.
+
+  TODO note that this assumes that we are running both tokenizers, which we indeed are.
+ */
+void resumeState() {
+    if (ClonedProject::StrideIndex() == 0)
+        return; // nothing to resume
+    Thread::Print(STR("Resuming previous state" << std::endl));
+    DBWriter::CheckDatabase();
+    SQLConnection sql;
+    sql.query(STR("USE " << DBWriter::DatabaseName()));
+    std::string tableName = Buffer::TableName(Buffer::Kind::Stats, TokenizerKind::Generic);
+
+
+    unsigned count = 0;
+    sql.query(STR("SELECT fileHash FROM " << tableName), [& count] (unsigned cols, char ** row) {
+       if (++count % 1000000 == 0)
+           Thread::Print(STR("      " << count << std::endl), false);
+       Hash h = Hash::Parse(row[0]);
+       Merger::AddUniqueFileHash(TokenizerKind::Generic, h);
+       Merger::AddUniqueFileHash(TokenizerKind::JavaScript, h);
+    });
+    Thread::Print(STR("      total: " <<  count << std::endl));
+
+
+}
+
+
 
 void resumeState(SQLConnection & sql, TokenizerKind t) {
 #ifdef HAHA
@@ -393,6 +421,7 @@ int main(int argc, char * argv[]) {
 
     try {
         setup(argc, argv);
+        resumeState();
         run();
     } catch (std::string const & e) {
         std::cerr << e << std::endl;
