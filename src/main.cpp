@@ -269,7 +269,7 @@ void stampAndSummary(std::chrono::high_resolution_clock::time_point const & sinc
     summary.append(STR("'js-files-tokens-unique'," << Merger::UniqueTokenHashes(TokenizerKind::JavaScript)));
     summary.append(STR("'csv-reader-jobs'," << CSVReader::JobsDone()));
     summary.append(STR("'csv-reader-errors'," << CSVReader::Errors()));
-    summary.append(STR("'downloader-jobs'," << Downloader::JobsDone));
+    summary.append(STR("'downloader-jobs'," << Downloader::JobsDone()));
     summary.append(STR("'downloader-errors'," << Downloader::Errors()));
     summary.append(STR("'tokenizer-jobs'," << Tokenizer::JobsDone()));
     summary.append(STR("'tokenizer-errors'," << Tokenizer::Errors()));
