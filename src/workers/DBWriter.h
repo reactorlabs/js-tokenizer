@@ -96,7 +96,7 @@ public:
     std::string buffer;
 
     friend std::ostream & operator << (std::ostream & s, DBWriterJob const & j) {
-        s << j.buffer.substr(0, 100) << "...";
+        s << j.buffer.substr(0, 150) << "...";
         return s;
     }
 
@@ -143,6 +143,7 @@ private:
         }
         try {
             // if it is project, use default context as projects table is identical for all tokenizers
+            Thread::Log(STR(job_));
             query(job_.buffer);
         } catch (std::string const & e) {
             reconnect();
