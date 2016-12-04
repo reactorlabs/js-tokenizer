@@ -94,7 +94,7 @@ std::string reportTokenizerFileStats(unsigned totalFiles) {
     std::stringstream ss;
     ss << "  " << T::kind << std::endl;
     ss << "    Errors                                         " << std::setw(14) << errors << std::setw(4) << pct(errors, totalFiles) << std::endl;
-    ss << "    Unique file hashes                             " << std::setw(14) << fileHashes << std::setw(4) << pct(fileHashes, totalFiles) << std::endl;
+    ss << "    Unique file hashes                             " << std::setw(14) << fileHashes << std::setw(4) /*<< pct(fileHashes, totalFiles) */ << std::endl;
     ss << "    Unique token hashes                            " << std::setw(14) << tokenHashes << std::setw(4) << pct(tokenHashes, totalFiles) << std::endl;
     return ss.str();
 }

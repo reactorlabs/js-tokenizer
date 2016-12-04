@@ -96,7 +96,7 @@ public:
     std::string buffer;
 
     friend std::ostream & operator << (std::ostream & s, DBWriterJob const & j) {
-        s << j.buffer.substr(0, 150) << "...";
+        s << j.buffer.substr(0, 100) << "...";
         return s;
     }
 
@@ -124,7 +124,7 @@ public:
     static void CheckDatabase() {
         SQLConnection sql;
         if (resetDatabase_) {
-            Thread::Print(STR("  dropping databae " << DatabaseName() << std::endl));
+            Thread::Print(STR("  dropping database " << DatabaseName() << std::endl));
             sql.query(STR("CREATE DATABASE IF NOT EXISTS " << DatabaseName()));
             sql.query(STR("DROP DATABASE " << DatabaseName()));
         }
@@ -143,7 +143,7 @@ private:
         }
         try {
             // if it is project, use default context as projects table is identical for all tokenizers
-            Thread::Log(STR(job_));
+            Thread::Log(STR(job_ << std::endl));
             query(job_.buffer);
         } catch (std::string const & e) {
             reconnect();
