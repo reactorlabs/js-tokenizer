@@ -112,13 +112,6 @@ public:
         contexts_[static_cast<unsigned>(kind)]->tokenInfo[hash] = group;
     }
 
-    /** Flushes the buffers making sure if they contain any data, this will be written to the database.
-     */
-/*    static void FlushBuffers() {
-        for (auto & i : buffers_)
-            i.second->flush();
-    } */
-
     static void FlushStatistics() {
         for (unsigned i = 0; i < contexts_.size(); ++i) {
             Context * c = contexts_[i];
@@ -142,7 +135,6 @@ public:
                     ii.second.uses));
             }
         }
-        //FlushBuffers();
     }
 
 private:
@@ -160,16 +152,7 @@ private:
 
 
         Context(TokenizerKind k):
-            tokenizer(k) { /*
-#define INITIALIZE(kind, target) Merger::buffers_[Buffer::ID(kind, k)] = new Buffer(target, kind, k);
-            INITIALIZE(Buffer::Kind::Stats, Buffer::Target::DB);
-            INITIALIZE(Buffer::Kind::ClonePairs, Buffer::Target::File);
-            INITIALIZE(Buffer::Kind::CloneGroups, Buffer::Target::File);
-            INITIALIZE(Buffer::Kind::Tokens, Buffer::Target::File);
-            INITIALIZE(Buffer::Kind::TokensText, Buffer::Target::File);
-            INITIALIZE(Buffer::Kind::TokenizedFiles, Buffer::Target::File);
-#undef INITIALIZE
-    */
+            tokenizer(k) {
         }
     };
 
@@ -212,14 +195,14 @@ private:
                     b.append(STR(
                          id << "," <<
                          i.first.size() << "," <<
-                         h << "," <<
+                         escape(h) << "," <<
                          escape(STR(i.first.substr(0, 1000) << "......" << i.first.substr(i.first.size() - 1000)))));
 
                 } else {
                     b.append(STR(
                          id << "," <<
                          i.first.size() << "," <<
-                         h << "," <<
+                         escape(h) << "," <<
                          escape(i.first)));
                 }
             }

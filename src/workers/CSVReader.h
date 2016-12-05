@@ -26,90 +26,113 @@ public:
     static char const QUOTE = '"';
     static char const ESCAPE = '\\';
 
-private:
+    /** Parses single row in CSV format and returns it as a vector of strings.
 
-    bool eol() {
-        return pos_ >= line_.size();
-    }
-
-    char top() {
-        return line_[pos_];
-    }
-
-    char pop() {
-        char result = line_[pos_];
-        if (pos_ < line_.size())
-            ++pos_;
-        return result;
-    }
-
-    void getLine() {
-        if (not std::getline(f_, line_))
-            line_ = "";
-        pos_ = 0;
-    }
-
-    void parseRow() {
-        row_.clear();
-        getLine();
-        while (not eol()) {
-            // parse single column
+      Note that a row may span multiple lines.
+     */
+    static void ParseRow(std::istream & from, std::vector<std::string> & into) {
+        std::string line;
+        if (not std::getline(from, line))
+            line = "";
+        unsigned pos = 0;
+        while (pos < line.size()) {
             std::string col = "";
-            if (top() == QUOTE) {
-                pop(); // the quote
-                while (not eol() and top() != QUOTE) {
-                    // if escaped, skip escape and make sure we add the next character
-                    if (top() == ESCAPE) {
-                        pop();
-                        // if there is end of line after the ESCAPE, it is EOL in some column
-                        if (eol()) {
-                            getLine();
-                            col += '\n';
+            if (line[pos] == QUOTE) {
+                ++pos; // for the quote
+                while (pos < line.size() and line[pos] != QUOTE) {
+                    if (line[pos] == ESCAPE) {
+                        ++pos;
+                        if (pos >= line.size()) {
+                            col += "\n";
+                            if (not std::getline(from, line))
+                                line = "";
+                            unsigned pos = 0;
                             continue;
                         }
                     }
-                    col += pop();
+                    col += line[pos++];
                 }
-                // pop the terminating quote
-                if (pop() != QUOTE)
-                    throw STR("Unterminated end of column, line " << line_);
             } else {
-                while (not eol() and top() != DELIMITER)
-                    col += pop();
+                while (pos < line.size() and line[pos] != DELIMITER)
+                    col += line[pos++];
             }
-            // add the column
-            row_.push_back(col);
-            // if we see delimiter, repeat for next column
-            if (top() == DELIMITER) {
-                pop();
-                continue;
-            }
-            break;
+            if (pos < line.size() and line[pos] == DELIMITER)
+                ++pos; // pop the delmiter
+            into.push_back(col);
         }
     }
 
-    std::string const & projectLanguage() {
-        return row_[5];
+    static void ParseFile(std::string const & filename, std::function<void(std::vector<std::string> &)> f) {
+        std::ifstream s(filename);
+        if (not s.good())
+            throw STR("Unable to open CSV file " << filename);
+        std::vector<std::string> row;
+        while (not s.eof()) {
+            row.clear();
+            ParseRow(s, row);
+            // callback for non-empty rows
+            if (not row.empty())
+                f(row);
+        }
     }
 
-    bool isDeleted() {
-        return row_[9] == "0";
+private:
+
+
+
+    std::string const & projectLanguage(std::vector<std::string> const & row) {
+        return row[5];
+    }
+
+    bool isDeleted(std::vector<std::string> const & row) {
+        return row[9] == "0";
 
     }
 
-    bool isForked() {
-        return row_[7] != "\\N";
+    bool isForked(std::vector<std::string> const & row) {
+        return row[7] != "\\N";
 
     }
 
     virtual void process() {
         unsigned counter = 0;
+        ParseFile(job_, [&](std::vector<std::string> & row) {
+            if (counter++ % ClonedProject::StrideCount() != ClonedProject::StrideIndex())
+                return;
+            ++totalProjects_;
+            if (projectLanguage(row) == language_) {
+                ++languageProjects_;
+                if (not isDeleted(row)) {
+                    if (not isForked(row)) {
+                        ++validProjects_;
+                        //if (validProjects_ > 10)
+                        //    break;
+                        // pass the project to the downloader
+                        try {
+                            Downloader::Schedule(DownloaderJob(new ClonedProject(
+                                std::atoi(row[0].c_str()),
+                                row[1].substr(29),
+                                timestampFrom(row[6]))));
+                        } catch (...) {
+                            Error("Invalid projects row");
+                            ++errors_;
+                        }
+                    } else {
+                        ++forkedProjects_;
+                    }
+                } else {
+                    ++deletedProjects_;
+                }
+            }
+        });
+/*
+
         f_.open(job_);
         if (not f_.good())
             throw STR("Unable to open CSV file " << job_);
         while (not f_.eof()) {
             // parse row
-            parseRow();
+            row_ = ParseRow(f_);
             if (row_.size() > 0) {
                 // use only every n-th project (this is the stride)
                 if (counter++ % ClonedProject::StrideCount() != ClonedProject::StrideIndex())
@@ -141,14 +164,12 @@ private:
                 }
             }
         }
-        f_.close();
+        f_.close(); */
     }
 
 
     std::ifstream f_;
-    std::string line_;
-    unsigned pos_;
-    std::vector<std::string> row_;
+    //std::vector<std::string> row_;
 
     static std::string language_;
 
