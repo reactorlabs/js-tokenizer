@@ -239,6 +239,18 @@ inline std::string exec(std::string const & what, std::string const & path ) {
     return result;
 }
 
+inline std::string time(double secs) {
+    unsigned seconds = (unsigned) secs;
+
+    unsigned d = seconds / (3600 * 24);
+    seconds = seconds % (3600 * 24);
+
+    unsigned h = seconds / 3600;
+    seconds = seconds % 3600;
+    unsigned m = seconds / 60;
+    unsigned s = seconds % 60;
+    return STR(d << ":" << std::setfill('0') << std::setw(2) << h << ":" << std::setfill('0') << std::setw(2) << m << ":" << std::setfill('0') << std::setw(2) << s);
+}
 
 
 
