@@ -48,16 +48,45 @@ public:
                                 line = "";
                             unsigned pos = 0;
                             continue;
+                        } else switch (line[pos]) {
+                            case 'b':
+                                col += '\b';
+                                ++pos;
+                                continue;
+                            case 'n':
+                                col += '\n';
+                                ++pos;
+                                continue;
+                            case 'r':
+                                col += '\r';
+                                ++pos;
+                                continue;
+                            case 't':
+                                col += '\t';
+                                ++pos;
+                                continue;
+                            case 'z':
+                                col += (char)26;
+                                ++pos;
+                                continue;
+                            default:
+                                break;
                         }
                     }
                     col += line[pos++];
+                }
+                if (pos < line.size()) {
+                    assert (line[pos] == QUOTE);
+                    ++pos; // pop the quote
                 }
             } else {
                 while (pos < line.size() and line[pos] != DELIMITER)
                     col += line[pos++];
             }
-            if (pos < line.size() and line[pos] == DELIMITER)
+            if (pos < line.size()) {
+                assert(line[pos] == DELIMITER);
                 ++pos; // pop the delmiter
+            }
             into.push_back(col);
         }
     }

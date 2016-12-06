@@ -228,10 +228,13 @@ void tokenize() {
     // flush database buffers and store state to the database
     Thread::Print(STR("  flushing db buffers and storing the state..." << std::endl));
 
-    std::thread t([]() {
+    std::atomic_int x(1);
+
+    std::thread t([&x]() {
         try {
             Merger::FlushStatistics();
             Buffer::FlushAll();
+            x = 0;
         } catch (std::string const & e) {
             Thread::Error(e);
         } catch (...) {
@@ -240,7 +243,7 @@ void tokenize() {
     });
     t.detach();
 
-    while (not stats(statsOutput, start)) {
+    while ((x == 1) or not stats(statsOutput, start)) {
         Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[42A"), false);
     }
     Thread::Print(STR("  writing stamp..." << std::endl));
@@ -251,8 +254,9 @@ void tokenize() {
     }
     // all is done
     Thread::Print(statsOutput); // print last stats into the logfile as well
+    Thread::Print(STR("  deleting remaining projects..." << std::endl));
+    exec("rm -rf", Downloader::DownloadDir());
     Thread::Print(STR("ALL DONE" << std::endl));
-    // todo print last info table
 }
 
 

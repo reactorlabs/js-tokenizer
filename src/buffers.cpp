@@ -206,29 +206,40 @@ std::ostream & operator << (std::ostream & s, Buffer::Kind k) {
             s << "stats";
             break;
         case Buffer::Kind::ClonePairs:
-            s << "clone_pairs_" << ClonedProject::StrideIndex();
+            s << "clone_pairs_" << abs(ClonedProject::StrideIndex());
+            if (ClonedProject::StrideIndex() < 0)
+                s << "m";
             break;
         case Buffer::Kind::CloneGroups:
-            s << "clone_groups_" << ClonedProject::StrideIndex();
+            s << "clone_groups_" << abs(ClonedProject::StrideIndex());
+            if (ClonedProject::StrideIndex() < 0)
+                s << "m";
             break;
         case Buffer::Kind::Tokens:
-            s << "tokens_" << ClonedProject::StrideIndex();
+            s << "tokens_" << abs(ClonedProject::StrideIndex());
+            if (ClonedProject::StrideIndex() < 0)
+                s << "m";
             break;
         case Buffer::Kind::TokensText:
-            s << "tokens_text_" << ClonedProject::StrideIndex();
+            s << "tokens_text_" << abs(ClonedProject::StrideIndex());
+            if (ClonedProject::StrideIndex() < 0)
+                s << "m";
             break;
         case Buffer::Kind::TokenizedFiles:
-            s << "tokenized_files_" << ClonedProject::StrideIndex();
+            s << "tokenized_files_" << abs(ClonedProject::StrideIndex());
+            if (ClonedProject::StrideIndex() < 0)
+                s << "m";
             break;
         case Buffer::Kind::Summary:
-            s << "summary_" << ClonedProject::StrideIndex();
+            s << "summary_" << abs(ClonedProject::StrideIndex());
+            if (ClonedProject::StrideIndex() < 0)
+                s << "m";
             break;
         default:
             s << "Error";
             break;
     }
-
-
+    return s;
 }
 
 

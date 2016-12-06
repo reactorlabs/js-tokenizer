@@ -37,7 +37,7 @@ void loadDefaults() {
     TokenizedFile::SetMaxInstances(100000);
     ClonedProject::SetMaxInstances(1000);
 
-    ClonedProject::StrideCount() = 100;
+    ClonedProject::StrideCount() = 1;
     ClonedProject::StrideIndex() = -1;
 
     SQLConnection::SetConnection("127.0.0.1", "peta", "pycus");
@@ -64,7 +64,7 @@ void setup(int argc, char * argv[]) {
     if (strcmp(argv[1], "merge") == 0) {
 
     } else {
-        ClonedProject::StrideCount() = 100;
+        ClonedProject::StrideCount() = 2; // make sure this is 100 on server!!!!! TODO
         ClonedProject::StrideIndex() = std::atoi(argv[1]);
         DBWriter::ResetDatabase() = ClonedProject::StrideIndex() == 0;
         // set the stride id for the files so that they are unique across strides
