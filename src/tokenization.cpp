@@ -8,6 +8,8 @@
 #include "workers/CSVReader.h"
 
 
+extern std::string CSV_file;
+
 
 // reporting
 
@@ -215,8 +217,8 @@ void tokenize() {
     initializeThreads<Merger>(8);
     initializeThreads<DBWriter>(1);
     initializeThreads<Writer>(1);
-    Thread::Print(STR("  scheduling csv file " << "TODO WHICH ONE" << std::endl));
-    CSVReader::Schedule("/data/sourcerer/ghtorrent/mysql-2016-11-01/projects.csv");
+    Thread::Print(STR("  scheduling csv file " << CSV_file << std::endl));
+    CSVReader::Schedule(CSV_file);
 
     // process all projects within current stride
     Thread::Print(STR("  processing..." << std::endl));
@@ -254,8 +256,10 @@ void tokenize() {
     }
     // all is done
     Thread::Print(statsOutput); // print last stats into the logfile as well
-    Thread::Print(STR("  deleting remaining projects..." << std::endl));
-    exec("rm -rf", Downloader::DownloadDir());
+    if (not ClonedProject::KeepProjects()) {
+        Thread::Print(STR("  deleting remaining projects..." << std::endl));
+        exec("rm -rf", Downloader::DownloadDir());
+    }
     Thread::Print(STR("ALL DONE" << std::endl));
 }
 

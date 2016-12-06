@@ -8,6 +8,9 @@
 
 #include "workers/CSVReader.h"
 
+std::string CSV_file = "/data/sourcerer/ghtorrent/mysql-2016-11-01/projects.csv";
+
+
 void tokenize();
 void mergeResults();
 
@@ -44,15 +47,13 @@ void loadDefaults() {
     CSVReader::SetLanguage("JavaScript");
 
     DBWriter::DatabaseName() = "github_js";
-    Downloader::DownloadDir() = "/data/sourcerer/github/download_all";
-    Writer::OutputDir() = "/data/sourcerer/github/output_text";
+    Downloader::DownloadDir() = "/data/sourcerer/github/download";
+    Writer::OutputDir() = "/data/sourcerer/github/output";
     ClonedProject::KeepProjects() = false;
 
     addTokenizer(TokenizerKind::Generic);
     addTokenizer(TokenizerKind::JavaScript);
 }
-
-
 
 
 void setup(int argc, char * argv[]) {
@@ -64,11 +65,22 @@ void setup(int argc, char * argv[]) {
     if (strcmp(argv[1], "merge") == 0) {
 
     } else {
-        ClonedProject::StrideCount() = 2; // make sure this is 100 on server!!!!! TODO
-        ClonedProject::StrideIndex() = std::atoi(argv[1]);
+        if (argc < 4)
+            throw STR("Invalid number of arguments.");
+        if (argc < 5)
+            std::cerr << "CSV file not specified, using default value " << CSV_file << std::endl;
+        else
+            CSV_file = argv[4];
+        // TODO
+        std::cout << "!!! IF RUNNING ON GITHUB ALL MAKE SURE STRIDE COUNT IS 100 AND PROPER STRIDE INDICES ARE GIVEN !!!" << std::endl;
+        ClonedProject::StrideCount() = std::atoi(argv[1]);
+        ClonedProject::StrideIndex() = std::atoi(argv[2]);
         DBWriter::ResetDatabase() = ClonedProject::StrideIndex() == 0;
         // set the stride id for the files so that they are unique across strides
         TokenizedFile::InitializeStrideId();
+        // the last argument is database name, which will also be appended to the default output directory
+        DBWriter::DatabaseName() = argv[3];
+        Writer::OutputDir() = STR(Writer::OutputDir() << "/" << argv[3]);
     }
 
     // last thing to do is check whether we should pause
@@ -91,8 +103,11 @@ void setup(int argc, char * argv[]) {
 
 
 
+/** Usage:
 
+  tokenizer COUNT INDEX db_name CSV_file
 
+ */
 int main(int argc, char * argv[]) {
     try {
         setup(argc, argv);
