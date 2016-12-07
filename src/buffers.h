@@ -72,9 +72,9 @@ public:
 
     static void FlushAll();
 
-    std::string static TableName(Buffer::Kind kind, TokenizerKind tokenizer);
+    std::string static TableName(Buffer::Kind kind, TokenizerKind tokenizer, std::string const & stride);
 
-    std::string static FileName(Buffer::Kind kind, TokenizerKind tokenizer);
+    std::string static FileName(Buffer::Kind kind, TokenizerKind tokenizer, std::string const & stride);
 
 private:
 

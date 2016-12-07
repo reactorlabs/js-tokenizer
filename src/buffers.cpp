@@ -58,8 +58,8 @@ Buffer::Buffer(Kind kind, TokenizerKind tokenizer):
     if (target_ == Target::DB) {
         // if target is database, create the table
         std::stringstream ss;
-        Thread::Print(STR("  creating table " << TableName(kind_, tokenizer_) << std::endl));
-        ss << "CREATE TABLE IF NOT EXISTS " << TableName(kind_, tokenizer_) << "(";
+        Thread::Print(STR("  creating table " << TableName(kind_, tokenizer_, STR(ClonedProject::StrideIndex())) << std::endl));
+        ss << "CREATE TABLE IF NOT EXISTS " << TableName(kind_, tokenizer_, STR(ClonedProject::StrideIndex())) << "(";
         switch (kind_) {
             case Kind::Stamp:
                 ss << "name VARCHAR(100) NOT NULL," <<
@@ -140,47 +140,61 @@ void Buffer::guardedFlush() {
         switch (kind_) {
             case Kind::Summary:
             case Kind::Stamp:
-                buffer_ = STR("REPLACE INTO " << TableName(kind_, tokenizer_) << " VALUES " << buffer_);
+                buffer_ = STR("REPLACE INTO " << TableName(kind_, tokenizer_, STR(ClonedProject::StrideIndex())) << " VALUES " << buffer_);
                 break;
             default:
-                buffer_ = STR("INSERT INTO " << TableName(kind_, tokenizer_) << " VALUES " << buffer_);
+                buffer_ = STR("INSERT INTO " << TableName(kind_, tokenizer_, STR(ClonedProject::StrideIndex())) << " VALUES " << buffer_);
         }
         DBWriter::Schedule(DBWriterJob(std::move(buffer_)));
     } else {
-        Writer::Schedule(WriterJob(FileName(kind_, tokenizer_), std::move(buffer_)));
+        Writer::Schedule(WriterJob(FileName(kind_, tokenizer_, STR(ClonedProject::StrideIndex())), std::move(buffer_)));
     }
     assert(buffer_.empty());
 }
 
-std::string Buffer::TableName(Buffer::Kind kind, TokenizerKind tokenizer) {
+std::string Buffer::TableName(Buffer::Kind kind, TokenizerKind tokenizer, std::string const & stride) {
     switch (kind) {
         case Kind::Stamp:
-        case Kind::Summary:
         case Kind::Projects:
         case Kind::ProjectsExtra:
         case Kind::Files:
         case Kind::FilesExtra:
             return STR(kind);
+        case Kind::Summary:
+            if (stride.empty())
+                return STR(kind);
+            else
+                return STR(kind << "_" << stride);
         case Kind::Error:
             assert(false and "This should never happen");
         default:
-            return STR(tokenizer << "_" << kind);
+            if (stride.empty())
+                return STR(tokenizer << "_" << kind);
+            else
+                return STR(tokenizer << "_" << kind << "_" << stride);
     }
 }
 
-std::string Buffer::FileName(Buffer::Kind kind, TokenizerKind tokenizer) {
+std::string Buffer::FileName(Buffer::Kind kind, TokenizerKind tokenizer, std::string const & stride) {
     switch (kind) {
         case Kind::Stamp:
-        case Kind::Summary:
         case Kind::Projects:
         case Kind::ProjectsExtra:
         case Kind::Files:
         case Kind::FilesExtra:
             return STR(kind << ".txt");
+        case Kind::Summary:
+            if (stride.empty())
+                return STR(kind << ".txt");
+            else
+                return STR(kind << "_" << stride << ".txt");
         case Kind::Error:
             assert(false and "This should never happen");
         default:
-            return STR(tokenizer << "/" << kind << ".txt");
+            if (stride.empty())
+                return STR(tokenizer << "/" << kind << ".txt");
+            else
+                return STR(tokenizer << "/" << kind << "_" << stride << ".txt");
     }
 }
 
@@ -206,34 +220,22 @@ std::ostream & operator << (std::ostream & s, Buffer::Kind k) {
             s << "stats";
             break;
         case Buffer::Kind::ClonePairs:
-            s << "clone_pairs_" << abs(ClonedProject::StrideIndex());
-            if (ClonedProject::StrideIndex() < 0)
-                s << "m";
+            s << "clone_pairs";
             break;
         case Buffer::Kind::CloneGroups:
-            s << "clone_groups_" << abs(ClonedProject::StrideIndex());
-            if (ClonedProject::StrideIndex() < 0)
-                s << "m";
+            s << "clone_groups";
             break;
         case Buffer::Kind::Tokens:
-            s << "tokens_" << abs(ClonedProject::StrideIndex());
-            if (ClonedProject::StrideIndex() < 0)
-                s << "m";
+            s << "tokens";
             break;
         case Buffer::Kind::TokensText:
-            s << "tokens_text_" << abs(ClonedProject::StrideIndex());
-            if (ClonedProject::StrideIndex() < 0)
-                s << "m";
+            s << "tokens_text";
             break;
         case Buffer::Kind::TokenizedFiles:
-            s << "tokenized_files_" << abs(ClonedProject::StrideIndex());
-            if (ClonedProject::StrideIndex() < 0)
-                s << "m";
+            s << "tokenized_files";
             break;
         case Buffer::Kind::Summary:
-            s << "summary_" << abs(ClonedProject::StrideIndex());
-            if (ClonedProject::StrideIndex() < 0)
-                s << "m";
+            s << "summary";
             break;
         default:
             s << "Error";

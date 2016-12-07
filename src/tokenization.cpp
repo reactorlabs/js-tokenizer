@@ -154,7 +154,7 @@ void resumeState() {
     DBWriter::CheckDatabase();
     SQLConnection sql;
     sql.query(STR("USE " << DBWriter::DatabaseName()));
-    std::string tableName = Buffer::TableName(Buffer::Kind::Stats, TokenizerKind::Generic);
+    std::string tableName = Buffer::TableName(Buffer::Kind::Stats, TokenizerKind::Generic, STR(ClonedProject::StrideIndex()));
 
     unsigned count = 0;
     sql.query(STR("SELECT fileHash FROM " << tableName), [& count] (unsigned cols, char ** row) {
@@ -262,75 +262,3 @@ void tokenize() {
     }
     Thread::Print(STR("ALL DONE" << std::endl));
 }
-
-
-
-
-/** Old code that shall be deleted soon */
-#ifdef HAHA
-
-
-void resumeState(SQLConnection & sql, TokenizerKind t) {
-    Thread::Print(STR("  resuming previous state for tokenizer " << " TODO NAME " << std::endl));
-    std::string p = prefix(t);
-
-    std::string tableStats = STR(p << DBWriter::TableStats);
-    std::string tableFilesExtra = STR(p << DBWriter::TableFilesExtra);
-    std::string tableCloneGroups = STR(p << DBWriter::TableCloneGroups << "_" << lastStride);
-    std::string tableCloneGroupHashes = STR(p << DBWriter::TableCloneGroupHashes << "_" << lastStride);
-    std::string tableTokens = STR(p << DBWriter::TableTokens << "_" << lastStride);
-    std::string tableTokenHashes = STR(p << DBWriter::TableTokenHashes << "_" << lastStride);
-
-
-    // first get unique hashes, these are just simply all hashes in stats so far
-    Thread::Print(STR("    unique file hashes..." << std::endl));
-    unsigned count = 0;
-    sql.query(STR("SELECT fileHash FROM " << tableStats), [t, & count] (unsigned cols, char ** row) {
-       if (++count % 1000000 == 0)
-           Thread::Print(STR("      " << count << std::endl), false);
-       Merger::AddUniqueFileHash(t, Hash::Parse(row[0]));
-   });
-    Thread::Print(STR("      total: " <<  Merger::UniqueFileHashes(t) << std::endl));
-
-    // get clone groups, each clone group has to be joined with file extra information so that we have oldest date *and* file id
-    Thread::Print(STR("    clone groups..." << std::endl));
-    count = 0;
-    sql.query(STR("SELECT groupId, oldestId, createdAt, hash FROM " << tableCloneGroups << " JOIN " << tableFilesExtra << " ON oldestId = fileId JOIN " << tableCloneGroupHashes << " ON groupId = id"), [t, & count] (unsigned cols, char ** row) {
-        if (++count % 1000000 == 0)
-            Thread::Print(STR("      " << count << std::endl), false);
-        Merger::AddCloneGroup(t, Hash::Parse(row[3]), CloneGroup(std::atoi(row[0]), std::atoi(row[1]), std::atoi(row[2])));
-    });
-    Thread::Print(STR("      total: " << Merger::NumCloneGroups(t) << std::endl));
-
-    Thread::Print(STR("    tokens..." << std::endl));
-    count = 0;
-    sql.query(STR("SELECT first.id, uses, hash FROM " << tableTokens << " AS first JOIN " << tableTokenHashes << " AS second ON first.id = second.id"), [t, & count] (unsigned cols, char ** row) {
-        if (++count % 1000000 == 0)
-            Thread::Print(STR("      " << count << std::endl), false);
-        Merger::AddTokenInfo(t, Hash::Parse(row[2]), TokenInfo(std::atoi(row[0]), std::atoi(row[1])));
-    });
-    Thread::Print(STR("      total: " << Merger::NumTokens(t) << std::endl));
-}
-
-void tokenize(std::string const & filename) {
-    std::ifstream s(filename);
-    s.seekg(0, std::ios::end);
-    unsigned long resizeSize = s.tellg();
-    std::string data;
-    data.resize(resizeSize);
-    s.seekg(0, std::ios::beg);
-    s.read(& data[0], data.size());
-    s.close();
-    std::shared_ptr<TokenizedFile> g(new TokenizedFile(1, nullptr, "haha", 67));
-    std::shared_ptr<TokenizedFile> js(new TokenizedFile(1, nullptr, "haha", 67));
-    GenericTokenizer t(data, g);
-    JavaScriptTokenizer t2(data, js);
-    t.tokenize();
-    //t2.tokenize();
-    std::cout << "generic: " << g->lines << " -- " << g->loc << " -- " << g->sloc << std::endl;
-    std::cout << "js:      " << js->lines << " -- " << js->loc << " -- " << js->sloc << std::endl;
-}
-
-
-#endif
-
