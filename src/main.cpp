@@ -57,12 +57,16 @@ void loadDefaults() {
 
 
 void setup(int argc, char * argv[]) {
-    if (argc < 2)
+    if (argc < 3)
         throw STR("Invalid number of arguments.");
 
     loadDefaults();
 
     if (strcmp(argv[1], "merge") == 0) {
+        DBWriter::DatabaseName() = argv[2];
+        Writer::OutputDir() = STR(Writer::OutputDir() << "/" << argv[2]);
+
+
 
     } else {
         if (argc < 4)

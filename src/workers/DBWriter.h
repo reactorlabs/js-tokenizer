@@ -51,6 +51,7 @@ public:
     }
 
     void query(std::string const & q, std::function<void(unsigned, char**)> f) {
+        //Thread::Print(STR(q << std::endl));
         query(q);
         MYSQL_RES * result = mysql_store_result(c_);
         if (result == nullptr)

@@ -165,6 +165,8 @@ std::string Buffer::TableName(Buffer::Kind kind, TokenizerKind tokenizer, std::s
                 return STR(kind);
             else
                 return STR(kind << "_" << stride);
+        case Kind::Stats:
+            return STR(tokenizer << "_" << kind);
         case Kind::Error:
             assert(false and "This should never happen");
         default:
@@ -188,6 +190,8 @@ std::string Buffer::FileName(Buffer::Kind kind, TokenizerKind tokenizer, std::st
                 return STR(kind << ".txt");
             else
                 return STR(kind << "_" << stride << ".txt");
+        case Kind::Stats:
+            return STR(tokenizer << "/" << kind << ".txt");
         case Kind::Error:
             assert(false and "This should never happen");
         default:

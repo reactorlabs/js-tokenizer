@@ -79,6 +79,7 @@ public:
                 logfile_ << " (" << current_->name_ << ")";
             logfile_ << std::endl;
         }
+        std::cerr << "ERROR: " << what;
     }
 
     static void Stall() {

@@ -260,5 +260,6 @@ void tokenize() {
         Thread::Print(STR("  deleting remaining projects..." << std::endl));
         exec("rm -rf", Downloader::DownloadDir());
     }
+    Writer::Finalize();
     Thread::Print(STR("ALL DONE" << std::endl));
 }
