@@ -1,5 +1,3 @@
-#ifdef HAHA
-
 #pragma once
 #include "DBWriter.h"
 #include "Writer.h"
@@ -328,6 +326,3 @@ private:
 
 
 };
-
-
-#endif
