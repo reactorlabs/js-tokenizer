@@ -46,7 +46,7 @@ public:
                             col += "\n";
                             if (not std::getline(from, line))
                                 line = "";
-                            unsigned pos = 0;
+                            pos = 0;
                             continue;
                         } else switch (line[pos]) {
                             case 'b':

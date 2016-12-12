@@ -8,7 +8,7 @@
 
 #include "workers/CSVReader.h"
 
-std::string CSV_file = "/data/sourcerer/ghtorrent/mysql-2016-11-01/projects.csv";
+std::string CSV_file = "/data/sourcerer/ghtorrent/mysql-2016-11-01/projects.small.csv";
 
 
 void tokenize();
