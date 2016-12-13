@@ -214,6 +214,7 @@ private:
         }
         // otherwise if it is a single stride, check if it has been computed
         if (job.first == job.second) {
+            return JobState::Done;
             SQLConnection sql;
             sql.query(STR("USE " << DBWriter::DatabaseName()));
             JobState result = JobState::NotAvailable;

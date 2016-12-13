@@ -11,7 +11,7 @@ void initializeThreads(unsigned num) {
 
 void mergeResults() {
     initializeThreads<ResultsMerger>(1);
-    ResultsMerger::Schedule(ResultsMerger::Job(0, 99, TokenizerKind::Generic));
+    ResultsMerger::Schedule(ResultsMerger::Job(0, 4, TokenizerKind::Generic));
     while (true) {
 
     }
