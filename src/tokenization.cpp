@@ -50,7 +50,6 @@ bool stats(std::string & output, std::chrono::high_resolution_clock::time_point 
     s.push_back(Downloader::Statistics());
     s.push_back(Tokenizer::Statistics());
     s.push_back(Merger::Statistics());
-    s.push_back(DBWriter::Statistics());
     s.push_back(Writer::Statistics());
 
     // get other info
@@ -97,7 +96,6 @@ bool stats(std::string & output, std::chrono::high_resolution_clock::time_point 
     ss << "  Projects                                         " << std::setw(14) << projects << std::setw(4) << pct(Tokenizer::JobsDone(), EXPECTED_PROJECTS) << std::endl;
     ss << "  Files                                            " << std::setw(14) << files << std::endl;
     ss << reportTokenizerFileStats<GenericTokenizer>(files);
-    ss << reportTokenizerFileStats<JavaScriptTokenizer>(files);
 
 
     // general progress information
@@ -118,11 +116,6 @@ bool stats(std::string & output, std::chrono::high_resolution_clock::time_point 
     ss << "  Generic" << std::endl;
     ss << "    Clone groups objects                            " << std::setw(12) << Merger::NumCloneGroups(TokenizerKind::Generic) << std::endl;
     ss << "    Token info objects                              " << std::setw(12) << Merger::NumTokens(TokenizerKind::Generic) << std::endl;
-    ss << "  JavaScript" << std::endl;
-    ss << "    Clone groups objects                            " << std::setw(12) << Merger::NumCloneGroups(TokenizerKind::JavaScript) << std::endl;
-    ss << "    Token info objects                              " << std::setw(12) << Merger::NumTokens(TokenizerKind::JavaScript) << std::endl;
-    ss << std::endl;
-    ss << "  ASSUMED MEMORY USE (without overhead)             " << std::setw(12) << xbytes(memory) << std::setw(4) << pct(memory / 1024, 64 * 1024 * 1024) << std::endl;
     ss << std::endl;
 
     output = ss.str();
@@ -147,6 +140,8 @@ void initializeThreads(unsigned num) {
   TODO note that this assumes that we are running both tokenizers, which we indeed are.
  */
 void resumeState() {
+
+    /*
     if (ClonedProject::StrideIndex() == 0)
         return; // nothing to resume
 
@@ -165,6 +160,7 @@ void resumeState() {
        Merger::AddUniqueFileHash(TokenizerKind::JavaScript, h);
     });
     Thread::Print(STR("      total: " <<  count << std::endl));
+    */
 }
 
 
@@ -183,8 +179,6 @@ void stampAndSummary(std::chrono::high_resolution_clock::time_point const & sinc
     summary.append(STR("'files'," << Tokenizer::TotalFiles()));
     summary.append(STR("'generic-files-unique'," << Merger::UniqueFileHashes(TokenizerKind::Generic)));
     summary.append(STR("'generic-files-tokens-unique'," << Merger::UniqueTokenHashes(TokenizerKind::Generic)));
-    summary.append(STR("'js-files-unique'," << Merger::UniqueFileHashes(TokenizerKind::JavaScript)));
-    summary.append(STR("'js-files-tokens-unique'," << Merger::UniqueTokenHashes(TokenizerKind::JavaScript)));
     summary.append(STR("'csv-reader-jobs'," << CSVReader::JobsDone()));
     summary.append(STR("'csv-reader-errors'," << CSVReader::Errors()));
     summary.append(STR("'downloader-jobs'," << Downloader::JobsDone()));
@@ -193,8 +187,6 @@ void stampAndSummary(std::chrono::high_resolution_clock::time_point const & sinc
     summary.append(STR("'tokenizer-errors'," << Tokenizer::Errors()));
     summary.append(STR("'merger-jobs'," << Merger::JobsDone()));
     summary.append(STR("'merger-errors'," << Merger::Errors()));
-    summary.append(STR("'db-writer-jobs'," << DBWriter::JobsDone()));
-    summary.append(STR("'db-writer-errors'," << DBWriter::Errors()));
     summary.append(STR("'file-writer-jobs'," << Writer::JobsDone()));
     summary.append(STR("'file-writer-errors'," << Writer::Errors()));
     Buffer::FlushAll();
@@ -208,14 +200,11 @@ void tokenize() {
     resumeState();
     auto start = std::chrono::high_resolution_clock::now();
 
-    DBWriter::CheckDatabase();
-
     Thread::Print(STR("  initializing threads" << std::endl));
     initializeThreads<CSVReader>(1);
-    initializeThreads<Downloader>(50);
-    initializeThreads<Tokenizer>(4);
-    initializeThreads<Merger>(8);
-    initializeThreads<DBWriter>(1);
+    initializeThreads<Downloader>(1);
+    initializeThreads<Tokenizer>(1);
+    initializeThreads<Merger>(1);
     initializeThreads<Writer>(1);
     Thread::Print(STR("  scheduling csv file " << CSV_file << std::endl));
     CSVReader::Schedule(CSV_file);
@@ -224,7 +213,7 @@ void tokenize() {
     Thread::Print(STR("  processing..." << std::endl));
     std::string statsOutput;
     while (not stats(statsOutput, start)) {
-        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[42A"), false);
+        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
     }
 
     // flush database buffers and store state to the database
@@ -246,13 +235,13 @@ void tokenize() {
     t.detach();
 
     while ((x == 1) or not stats(statsOutput, start)) {
-        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[42A"), false);
+        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
     }
     Thread::Print(STR("  writing stamp..." << std::endl));
     stampAndSummary(start);
 
     while (not stats(statsOutput, start)) {
-        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[42A"), false);
+        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
     }
     // all is done
     Thread::Print(statsOutput); // print last stats into the logfile as well

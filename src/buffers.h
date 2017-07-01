@@ -8,11 +8,6 @@
 
 class Buffer {
 public:
-    enum class Target {
-        DB,
-        File
-    };
-
     enum class Kind {
         Projects,
         ProjectsExtra,
@@ -47,13 +42,7 @@ public:
 
     void append(std::string const & what) {
         std::lock_guard<std::mutex> g(m_);
-        if (target_ == Target::File) {
-            buffer_ += STR(what << std::endl);
-        } else {
-            if (not buffer_.empty())
-                buffer_ += ",";
-            buffer_ += STR("(" << what << ")");
-        }
+        buffer_ += STR(what << std::endl);
         if (buffer_.size() > BUFFER_LIMIT)
             guardedFlush();
     }
@@ -68,11 +57,8 @@ public:
 
     static Buffer & Get(Kind kind, TokenizerKind tokenizer);
 
-    static Target & TargetType(Kind kind);
 
     static void FlushAll();
-
-    std::string static TableName(Buffer::Kind kind, TokenizerKind tokenizer, std::string const & stride);
 
     std::string static FileName(Buffer::Kind kind, TokenizerKind tokenizer, std::string const & stride);
 
@@ -80,14 +66,12 @@ private:
 
     void guardedFlush();
 
-    Target target_;
     Kind kind_;
     TokenizerKind tokenizer_;
     std::string buffer_;
     std::mutex m_;
 
     static std::unordered_map<ID, Buffer *> buffers_;
-    static std::unordered_map<Kind, Target> bufferTargets_;
 
 };
 

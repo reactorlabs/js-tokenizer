@@ -7,7 +7,6 @@
 #include "../worker.h"
 #include "../buffers.h"
 
-#include "DBWriter.h"
 #include "Tokenizer.h"
 
 class DownloaderJob : public std::shared_ptr<ClonedProject> {

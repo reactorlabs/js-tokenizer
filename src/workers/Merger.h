@@ -7,7 +7,6 @@
 #include "../data.h"
 #include "../worker.h"
 
-#include "DBWriter.h"
 #include "Writer.h"
 
 class MergerJob : public std::shared_ptr<TokensMap> {

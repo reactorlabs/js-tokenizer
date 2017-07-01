@@ -7,7 +7,6 @@
 #include "Merger.h"
 
 #include "../tokenizers/generic.h"
-#include "../tokenizers/js.h"
 
 
 class TokenizerJob : public std::shared_ptr<ClonedProject> {
@@ -257,10 +256,7 @@ private:
                 int id = TokenizedFile::GetNewId();
                 // valid file, let's tokenize
                 bool isValid = true;
-                if (tokenizers_.find(TokenizerKind::JavaScript) != tokenizers_.end())
-                    isValid = tokenize<JavaScriptTokenizer>(id, relPath, cdate, data, length, fileHash);
-                if (isValid and (tokenizers_.find(TokenizerKind::Generic) != tokenizers_.end()))
-                    tokenize<GenericTokenizer>(id, relPath, cdate, data, length, fileHash);
+                tokenize<GenericTokenizer>(id, relPath, cdate, data, length, fileHash);
                 // send the file to the backend
                 Buffer::Get(Buffer::Kind::Files).append(STR(
                     id << "," <<

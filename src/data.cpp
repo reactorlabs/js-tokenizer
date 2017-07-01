@@ -1,5 +1,4 @@
 #include "data.h"
-#include "workers/DBWriter.h"
 #include "workers/Writer.h"
 
 bool ClonedProject::keepProjects_ = false;
