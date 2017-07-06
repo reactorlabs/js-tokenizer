@@ -9,7 +9,7 @@
 #include "workers/CSVReader.h"
 
 std::string CSV_file = "";
-
+bool quiet = false;
 
 void tokenize();
 void mergeResults();
@@ -39,8 +39,10 @@ void loadDefaults() {
 
 // language input file, num strides, stride, output dir
 void setup(int argc, char * argv[]) {
-    if (argc !=6 )
+    if (argc != 6 || argc != 7 )
         throw STR("Invalid number of arguments");
+    if (argc ==7 && argv[6] == "quiet")
+        quiet = true;
     loadDefaults();
     CSVReader::SetLanguage(argv[1]);
     CSV_file = argv[2];

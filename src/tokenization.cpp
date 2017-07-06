@@ -9,7 +9,7 @@
 
 
 extern std::string CSV_file;
-
+extern bool quiet;
 
 // reporting
 
@@ -213,7 +213,8 @@ void tokenize() {
     Thread::Print(STR("  processing..." << std::endl));
     std::string statsOutput;
     while (not stats(statsOutput, start)) {
-        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
+        if (!quiet)
+            Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
     }
 
     // flush database buffers and store state to the database
@@ -235,13 +236,15 @@ void tokenize() {
     t.detach();
 
     while ((x == 1) or not stats(statsOutput, start)) {
-        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
+        if (!quiet)
+            Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
     }
     Thread::Print(STR("  writing stamp..." << std::endl));
     stampAndSummary(start);
 
     while (not stats(statsOutput, start)) {
-        Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
+        if (!quiet)
+            Thread::Print(STR(CSI << "[J" << statsOutput << CSI << "[32A"), false);
     }
     // all is done
     Thread::Print(statsOutput); // print last stats into the logfile as well
