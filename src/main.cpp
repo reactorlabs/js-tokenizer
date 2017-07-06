@@ -41,7 +41,7 @@ void loadDefaults() {
 void setup(int argc, char * argv[]) {
     if (argc != 6 && argc != 7 )
         throw STR("Invalid number of arguments");
-    if (argc ==7 && argv[6] == "quiet")
+    if (argc == 7 && strncmp(argv[6],"quiet", 6) == 0)
         quiet = true;
     loadDefaults();
     CSVReader::SetLanguage(argv[1]);
