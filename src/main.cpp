@@ -39,7 +39,7 @@ void loadDefaults() {
 
 // language input file, num strides, stride, output dir
 void setup(int argc, char * argv[]) {
-    if (argc != 6 || argc != 7 )
+    if (argc != 6 && argc != 7 )
         throw STR("Invalid number of arguments");
     if (argc ==7 && argv[6] == "quiet")
         quiet = true;
