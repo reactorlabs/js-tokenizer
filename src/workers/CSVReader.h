@@ -2,6 +2,7 @@
 
 #include <string>
 #include <fstream>
+#include <functional>
 
 #include "../data.h"
 #include "../worker.h"
